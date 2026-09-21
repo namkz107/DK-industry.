@@ -10,9 +10,15 @@ node_modules/
 
 # production
 build/
-.env
-backend/.env
-frontend/.env
+
+# local environment and secrets (keep only sanitized examples)
+**/.env
+**/.env.*
+!**/.env.example
+*.pem
+*.key
+*.p12
+*.pfx
 
 # misc
 .DS_Store
