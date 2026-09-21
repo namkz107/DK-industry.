@@ -1,1 +1,41 @@
-html,body,#root{min-height:100%}body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=Source+Sans+3:wght@400;500;600;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Source Sans 3", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Manrope", ui-sans-serif, system-ui, sans-serif;
+}
+
+@layer base {
+  * { border-color: var(--color-slate-200); }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; min-width: 320px; background: white; color: var(--color-slate-950); font-family: var(--font-sans); font-size: 16px; -webkit-font-smoothing: antialiased; }
+  button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
+  a { transition: color .2s ease; }
+  ::selection { background: var(--color-orange-200); color: var(--color-emerald-950); }
+  :focus-visible { outline: 3px solid var(--color-orange-400); outline-offset: 3px; }
+}
+
+@layer components {
+  .container-page { width: min(1180px, calc(100% - 32px)); margin-inline: auto; }
+  .section-space { padding-block: clamp(4.5rem, 8vw, 7.5rem); }
+  .heading-section { font-family: var(--font-display); font-size: clamp(2.15rem, 4.2vw, 3.6rem); font-weight: 700; line-height: 1.12; letter-spacing: -.04em; color: var(--color-emerald-950); }
+  .heading-section span { color: var(--color-orange-600); }
+  .section-title-row { display: flex; align-items: end; justify-content: space-between; gap: 2rem; }
+  .section-title-row > p { max-width: 390px; font-size: 1.05rem; line-height: 1.75; color: var(--color-slate-600); }
+  .section-title-dark > p { color: rgb(236 253 245 / .62); }
+  .field-select { min-height: 3rem; width: 100%; border-radius: .75rem; border: 1px solid var(--color-slate-300); background: white; padding-inline: 1rem; font-size: 1rem; outline: none; }
+  .field-select:focus { border-color: var(--color-orange-500); box-shadow: 0 0 0 4px var(--color-orange-100); }
+  .skip-link { position: fixed; left: 1rem; top: -5rem; z-index: 100; border-radius: .75rem; background: white; padding: .75rem 1rem; font-weight: 700; color: var(--color-emerald-950); box-shadow: 0 4px 20px #0002; }
+  .skip-link:focus { top: 1rem; }
+}
+
+@media (max-width: 767px) {
+  .section-title-row { align-items: start; flex-direction: column; }
+  .section-title-row > p { max-width: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+}

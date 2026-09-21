@@ -1,6 +1,6 @@
 # DK Industry
 
-Website giới thiệu năng lực, dự án và sản phẩm dành cho doanh nghiệp cơ khí – công nghiệp. Source được tổ chức theo mô hình React SPA + Node/Express REST API + MongoDB.
+Website giới thiệu năng lực, dự án và sản phẩm dành cho doanh nghiệp cơ khí – công nghiệp. Source được tổ chức theo mô hình React/Vite SPA + Node/Express REST API + MongoDB.
 
 ## Chức năng hiện có
 
@@ -11,13 +11,29 @@ Website giới thiệu năng lực, dự án và sản phẩm dành cho doanh ng
 - Dữ liệu fallback ở frontend và script seed MongoDB để chạy demo nhanh.
 - Header bảo vệ admin bằng `x-admin-key` khi `ADMIN_API_KEY` được cấu hình.
 
+## Frontend stack chuẩn của dự án
+
+- **Vite + React + TypeScript**: build nhanh, type-safe và hỗ trợ code splitting.
+- **Tailwind CSS v4**: design system, responsive và CSS production tối ưu.
+- **shadcn/ui + Radix UI**: component source-owned, accessible, dễ tùy biến.
+- **TanStack Query**: gọi API, cache, deduplicate và quản lý trạng thái server.
+- **React Hook Form + Zod**: form hiệu năng cao và validation thống nhất.
+- **React Router**: lazy route cho trang dịch vụ, dự án và sản phẩm.
+- **Lucide React**: icon vector tree-shakeable.
+- **React Bits**: animation source-owned, có hỗ trợ reduced motion.
+
+Mọi chức năng frontend mới cần tiếp tục dùng stack này và ưu tiên chữ dễ đọc, vùng bấm tối thiểu 44px, tương phản cao, thao tác ngắn và hỗ trợ bàn phím.
+
 ## Cấu trúc
 
 ```text
 dk-industry/
 ├── frontend/               # React/CRA
 │   ├── public/
-│   └── src/
+│   ├── src/components/ui/        # shadcn primitives
+│   ├── src/components/react-bits/# animation source-owned
+│   ├── src/pages/                # lazy-loaded routes
+│   └── src/lib/                  # API và utilities
 ├── backend/                # Express/Mongoose API
 │   ├── src/config/
 │   ├── src/middleware/

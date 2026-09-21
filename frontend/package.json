@@ -1,40 +1,46 @@
 {
-  "name": "dk-industry",
-  "version": "0.1.0",
+  "name": "dk-industry-frontend",
+  "version": "1.0.0",
   "private": true,
-  "dependencies": {
-    "@testing-library/dom": "^10.4.2",
-    "@testing-library/jest-dom": "^6.9.1",
-    "@testing-library/react": "^16.3.3",
-    "@testing-library/user-event": "^13.5.0",
-    "dk-industry": "file:..",
-    "react": "^19.3.0",
-    "react-dom": "^19.3.0",
-    "react-scripts": "5.0.1",
-    "web-vitals": "^2.1.4"
-  },
+  "type": "module",
   "scripts": {
-    "start": "react-scripts start",
-    "build": "react-scripts build",
-    "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "start": "vite",
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "lint": "eslint ."
   },
-  "eslintConfig": {
-    "extends": [
-      "react-app",
-      "react-app/jest"
-    ]
+  "dependencies": {
+    "@hookform/resolvers": "^5.2.2",
+    "@radix-ui/react-dialog": "^1.1.15",
+    "@radix-ui/react-slot": "^1.2.4",
+    "@tanstack/react-query": "^5.90.2",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "dk-industry": "file:..",
+    "lucide-react": "^0.545.0",
+    "motion": "^12.23.24",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "react-hook-form": "^7.64.0",
+    "react-router-dom": "^7.9.3",
+    "tailwind-merge": "^3.3.1",
+    "zod": "^4.1.11"
   },
-  "browserslist": {
-    "production": [
-      ">0.2%",
-      "not dead",
-      "not op_mini all"
-    ],
-    "development": [
-      "last 1 chrome version",
-      "last 1 firefox version",
-      "last 1 safari version"
-    ]
+  "devDependencies": {
+    "@eslint/js": "^9.36.0",
+    "@tailwindcss/vite": "^4.1.14",
+    "@types/node": "^24.7.0",
+    "@types/react": "^19.1.16",
+    "@types/react-dom": "^19.1.9",
+    "@vitejs/plugin-react": "^5.0.4",
+    "eslint": "^9.36.0",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "eslint-plugin-react-refresh": "^0.4.22",
+    "globals": "^16.4.0",
+    "tailwindcss": "^4.1.14",
+    "typescript": "~5.9.3",
+    "typescript-eslint": "^8.45.0",
+    "vite": "^7.1.7"
   }
 }
