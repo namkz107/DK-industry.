@@ -3,6 +3,7 @@ import { AppLayout } from "@/components/app-layout"
 
 export const router = createBrowserRouter([{ element: <AppLayout />, children: [
   { path: "/", lazy: async () => { const module = await import("@/pages/home-page"); return { Component: module.HomePage } } },
+  { path: "/gioi-thieu", lazy: async () => { const module = await import("@/pages/about-page"); return { Component: module.AboutPage } } },
   { path: "/dich-vu", lazy: async () => { const module = await import("@/pages/services-page"); return { Component: module.ServicesPage } } },
   { path: "/du-an", lazy: async () => { const module = await import("@/pages/projects-page"); return { Component: module.ProjectsPage } } },
   { path: "/san-pham", lazy: async () => { const module = await import("@/pages/products-page"); return { Component: module.ProductsPage } } },
