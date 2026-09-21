@@ -1,70 +1,58 @@
-# Getting Started with Create React App
+# DK Industry
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+Website giới thiệu năng lực, dự án và sản phẩm dành cho doanh nghiệp cơ khí – công nghiệp. Source được tổ chức theo mô hình React SPA + Node/Express REST API + MongoDB.
 
-## Available Scripts
+## Chức năng hiện có
 
-In the project directory, you can run:
+- Landing page hiện đại, responsive: năng lực, dịch vụ, dự án, sản phẩm, quy trình và góc kỹ thuật.
+- Form yêu cầu tư vấn/RFQ có thể đính kèm các sản phẩm đã chọn.
+- API lưu và quản lý lead theo pipeline: mới, đã liên hệ, đã báo giá, thắng hoặc mất.
+- CRUD API cho dự án và sản phẩm; thống kê CRM mini cho dashboard.
+- Dữ liệu fallback ở frontend và script seed MongoDB để chạy demo nhanh.
+- Header bảo vệ admin bằng `x-admin-key` khi `ADMIN_API_KEY` được cấu hình.
 
-### `npm start`
+## Cấu trúc
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+```text
+dk-industry/
+├── frontend/               # React/CRA
+│   ├── public/
+│   └── src/
+├── backend/                # Express/Mongoose API
+│   ├── src/config/
+│   ├── src/middleware/
+│   ├── src/models/
+│   └── src/routes/
+├── .env.example
+└── package.json            # script điều phối monorepo
+```
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+## Chạy local
 
-### `npm test`
+Yêu cầu Node.js 18+ và MongoDB local (hoặc MongoDB Atlas).
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+```bash
+npm run install:all
+copy backend\.env.example backend\.env
+npm run seed
+npm run dev
+```
 
-### `npm run build`
+- Website: `http://localhost:3000`
+- API health check: `http://localhost:5000/api/health`
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+Nếu chưa bật MongoDB/backend, frontend vẫn sử dụng dữ liệu mẫu để xem giao diện. Form chỉ được lưu thật khi API hoạt động.
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+## API chính
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+| Method | Endpoint | Công dụng |
+|---|---|---|
+| GET | `/api/projects` | Danh sách dự án đã xuất bản |
+| GET | `/api/products` | Danh sách sản phẩm đang hoạt động |
+| POST | `/api/leads` | Gửi yêu cầu tư vấn / báo giá |
+| GET | `/api/admin/dashboard` | Thống kê CRM mini |
+| GET/PATCH | `/api/admin/leads` | Danh sách/cập nhật trạng thái lead |
+| POST/PATCH/DELETE | `/api/admin/products/:id` | Quản trị sản phẩm |
+| POST/PATCH/DELETE | `/api/admin/projects/:id` | Quản trị dự án |
 
-### `npm run eject`
-
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
-
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
-
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
-
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
-
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+Các route `/api/admin/*` yêu cầu header `x-admin-key` nếu đã thiết lập `ADMIN_API_KEY`. Trước khi production cần thay toàn bộ thông tin liên hệ, hình ảnh demo và cấu hình email/Zalo/thanh toán thực tế.
