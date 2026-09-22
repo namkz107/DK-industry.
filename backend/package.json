@@ -8,6 +8,7 @@
     "dev": "nodemon src/server.js",
     "seed": "node src/seed.js",
     "seed:admin": "node src/bootstrapAdmin.js",
+    "migrate:lead-service": "node src/migrateLeadService.js",
     "test": "node --test"
   },
   "dependencies": {

@@ -12,7 +12,9 @@ const app = require('../src/app');
 const Cart = require('../src/models/Cart');
 const Order = require('../src/models/Order');
 const Product = require('../src/models/Product');
+const Quotation = require('../src/models/Quotation');
 const RefreshSession = require('../src/models/RefreshSession');
+const RequestMessage = require('../src/models/RequestMessage');
 const ServiceRequest = require('../src/models/ServiceRequest');
 const User = require('../src/models/User');
 
@@ -87,22 +89,59 @@ test('Customer quản lý hồ sơ, giỏ hàng, đơn hàng và yêu cầu riê
     assert.equal(download.status, 200);
     assert.match(await download.text(), /customer integration test/);
 
-    const cancelRequest = await request(`/customer/requests/${serviceRequest._id}/cancel`, customer.accessToken, { method: 'PATCH' });
+    const messageForm = new FormData(); messageForm.append('content', 'Tôi bổ sung thêm dung sai ±0.05mm.'); messageForm.append('attachments', new Blob(['%PDF-1.4 supplement'], { type: 'application/pdf' }), 'bo-sung.pdf');
+    const sendMessage = await request(`/customer/requests/${serviceRequest._id}/messages`, customer.accessToken, { method: 'POST', body: messageForm });
+    assert.equal(sendMessage.status, 201);
+    const detailResponse = await request(`/customer/requests/${serviceRequest._id}`, customer.accessToken);
+    const detailBody = await detailResponse.json();
+    const customerMessage = detailBody.data.messages.find(item => item.content.includes('dung sai'));
+    assert.ok(customerMessage);
+    assert.equal(Object.hasOwn(customerMessage.attachments[0], 'storedName'), false);
+    const otherCannotDownloadMessage = await request(`/customer/requests/${serviceRequest._id}/messages/${customerMessage._id}/attachments/${customerMessage.attachments[0]._id}`, other.accessToken);
+    assert.equal(otherCannotDownloadMessage.status, 404);
+    const downloadMessage = await request(`/customer/requests/${serviceRequest._id}/messages/${customerMessage._id}/attachments/${customerMessage.attachments[0]._id}`, customer.accessToken);
+    assert.equal(downloadMessage.status, 200);
+    assert.match(await downloadMessage.text(), /supplement/);
+
+    const firstQuote = await Quotation.create({ request: serviceRequest._id, customer: customer.user.id, version: 1, items: [{ description: 'Gia công chi tiết inox', quantity: 10, unit: 'chiếc', unitPrice: 100000 }], taxRate: 10, validUntil: new Date(Date.now() + 7 * 86400000), status: 'sent', sentAt: new Date(), leadTime: '7 ngày làm việc' });
+    await ServiceRequest.updateOne({ _id: serviceRequest._id }, { status: 'quoted', $push: { timeline: { status: 'quoted', message: `Đã gửi báo giá ${firstQuote.code}.`, actorType: 'system' } } });
+    assert.equal(firstQuote.total, 1100000);
+    const otherCannotRespond = await request(`/customer/requests/${serviceRequest._id}/quotations/${firstQuote._id}/respond`, other.accessToken, { method: 'PATCH', body: JSON.stringify({ decision: 'accepted' }) });
+    assert.equal(otherCannotRespond.status, 404);
+    const rejectQuote = await request(`/customer/requests/${serviceRequest._id}/quotations/${firstQuote._id}/respond`, customer.accessToken, { method: 'PATCH', body: JSON.stringify({ decision: 'rejected', note: 'Cần điều chỉnh tiến độ.' }) });
+    assert.equal(rejectQuote.status, 200);
+    assert.equal((await rejectQuote.json()).data.status, 'rejected');
+
+    const secondQuote = await Quotation.create({ request: serviceRequest._id, customer: customer.user.id, version: 2, items: [{ description: 'Gia công chi tiết inox', quantity: 10, unit: 'chiếc', unitPrice: 95000 }], taxRate: 10, validUntil: new Date(Date.now() + 7 * 86400000), status: 'sent', sentAt: new Date(), leadTime: '5 ngày làm việc' });
+    await ServiceRequest.updateOne({ _id: serviceRequest._id }, { status: 'quoted', $push: { timeline: { status: 'quoted', message: `Đã gửi báo giá ${secondQuote.code}.`, actorType: 'system' } } });
+    const acceptQuote = await request(`/customer/requests/${serviceRequest._id}/quotations/${secondQuote._id}/respond`, customer.accessToken, { method: 'PATCH', body: JSON.stringify({ decision: 'accepted' }) });
+    assert.equal(acceptQuote.status, 200);
+    assert.equal((await acceptQuote.json()).data.status, 'accepted');
+    assert.equal((await ServiceRequest.findById(serviceRequest._id)).status, 'accepted');
+
+    const cancelForm = new FormData(); cancelForm.append('requestType', 'consulting'); cancelForm.append('title', 'Yêu cầu để kiểm thử hủy'); cancelForm.append('description', 'Yêu cầu này được tạo riêng để kiểm tra thao tác hủy.');
+    const cancellableResponse = await request('/customer/requests', customer.accessToken, { method: 'POST', body: cancelForm });
+    const cancellableBody = await cancellableResponse.json();
+    const cancelRequest = await request(`/customer/requests/${cancellableBody.data.id}/cancel`, customer.accessToken, { method: 'PATCH' });
     assert.equal(cancelRequest.status, 200);
     const summary = await request('/customer/summary', customer.accessToken);
     const summaryBody = await summary.json();
     assert.equal(summary.status, 200);
     assert.equal(summaryBody.data.orders, 1);
-    assert.equal(summaryBody.data.requests, 1);
+    assert.equal(summaryBody.data.requests, 2);
     assert.equal(summaryBody.data.cartItems, 0);
   } finally {
     const storedRequests = await ServiceRequest.find({ customer: { $in: users } });
+    const storedMessages = await RequestMessage.find({ request: { $in: storedRequests.map(item => item._id) } }).select('+attachments.storedName');
     for (const item of storedRequests) for (const attachment of item.attachments) {
+      await fs.promises.unlink(path.join(__dirname, '..', 'storage', 'customer-requests', attachment.storedName)).catch(() => {});
+    }
+    for (const item of storedMessages) for (const attachment of item.attachments) {
       await fs.promises.unlink(path.join(__dirname, '..', 'storage', 'customer-requests', attachment.storedName)).catch(() => {});
     }
     await Promise.all([
       Cart.deleteMany({ customer: { $in: users } }), Order.deleteMany({ customer: { $in: users } }),
-      ServiceRequest.deleteMany({ customer: { $in: users } }), RefreshSession.deleteMany({ user: { $in: users } }),
+      Quotation.deleteMany({ customer: { $in: users } }), RequestMessage.deleteMany({ request: { $in: storedRequests.map(item => item._id) } }), ServiceRequest.deleteMany({ customer: { $in: users } }), RefreshSession.deleteMany({ user: { $in: users } }),
       User.deleteMany({ _id: { $in: users } }), product ? Product.deleteOne({ _id: product._id }) : Promise.resolve()
     ]);
     await new Promise((resolve, reject) => server.close(error => error ? reject(error) : resolve()));

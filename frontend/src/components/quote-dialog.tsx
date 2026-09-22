@@ -16,13 +16,17 @@ const quoteSchema = z.object({
   serviceType: z.string().min(1, "Vui lòng chọn nhu cầu"),
   budget: z.string(),
   message: z.string().trim().max(2000, "Nội dung tối đa 2.000 ký tự"),
+  consent: z.boolean().refine(value => value, "Vui lòng đồng ý để chúng tôi liên hệ"),
 })
 type QuoteData = z.infer<typeof quoteSchema>
 
 export function QuoteDialog({ open, onOpenChange, product }: { open: boolean; onOpenChange: (value: boolean) => void; product?: string }) {
-  const form = useForm<QuoteData>({ resolver: zodResolver(quoteSchema), defaultValues: { name: "", phone: "", email: "", serviceType: product ? "Cung ứng thiết bị" : "", budget: "Chưa xác định", message: product ? `Tôi cần báo giá: ${product}` : "" } })
+  const form = useForm<QuoteData>({ resolver: zodResolver(quoteSchema), defaultValues: { name: "", phone: "", email: "", serviceType: product ? "Cung ứng thiết bị" : "", budget: "Chưa xác định", message: product ? `Tôi cần báo giá: ${product}` : "", consent: false } })
   const mutation = useMutation({ mutationFn: api.createLead, onSuccess: () => form.reset() })
-  const submit = form.handleSubmit(data => mutation.mutate(data))
+  const submit = form.handleSubmit(data => {
+    const params = new URLSearchParams(window.location.search)
+    mutation.mutate({ ...data, sourceDetails: { landingPage: window.location.href, referrer: document.referrer, utmSource: params.get("utm_source"), utmMedium: params.get("utm_medium"), utmCampaign: params.get("utm_campaign") } })
+  })
 
   return <Dialog.Root open={open} onOpenChange={onOpenChange}>
     <Dialog.Portal>
@@ -46,9 +50,10 @@ export function QuoteDialog({ open, onOpenChange, product }: { open: boolean; on
             <Field label="Ngân sách dự kiến"><select className="field-select" {...form.register("budget")}><option>Chưa xác định</option><option>Dưới 100 triệu</option><option>100 - 500 triệu</option><option>500 triệu - 2 tỷ</option><option>Trên 2 tỷ</option></select></Field>
           </div>
           <Field label="Mô tả yêu cầu" error={form.formState.errors.message?.message}><Textarea placeholder="Loại công trình, thông số, số lượng, tiến độ mong muốn..." {...form.register("message")} /></Field>
+          <label className="mb-5 flex items-start gap-3 text-sm leading-6 text-slate-600"><input className="mt-1 size-5 shrink-0 accent-orange-600" type="checkbox" {...form.register("consent")}/><span>Tôi đồng ý để Cơ khí Đăng Khoa sử dụng thông tin trên nhằm liên hệ tư vấn và xử lý yêu cầu.{form.formState.errors.consent?.message && <strong className="block text-red-600">{form.formState.errors.consent.message}</strong>}</span></label>
           <Button className="mt-2 w-full" size="lg" disabled={mutation.isPending}>{mutation.isPending ? <><LoaderCircle className="size-5 animate-spin" />Đang gửi...</> : <>Gửi yêu cầu <Send className="size-5" /></>}</Button>
-          {mutation.isSuccess && <p role="status" className="mt-4 rounded-xl bg-emerald-50 p-4 text-sm font-semibold text-emerald-800">Yêu cầu đã được gửi. Chúng tôi sẽ liên hệ với bạn sớm nhất.</p>}
-          {mutation.isError && <p role="alert" className="mt-4 rounded-xl bg-amber-50 p-4 text-sm text-amber-900">Không thể kết nối hệ thống. Vui lòng gọi 096 5243 386 hoặc thử lại sau.</p>}
+          {mutation.isSuccess && <p role="status" className="mt-4 rounded-xl bg-emerald-50 p-4 text-sm font-semibold text-emerald-800">{mutation.data.message}. Mã tiếp nhận: {mutation.data.data.code}.</p>}
+          {mutation.isError && <p role="alert" className="mt-4 rounded-xl bg-amber-50 p-4 text-sm text-amber-900">{mutation.error.message}</p>}
         </form>
         <Dialog.Close className="absolute right-4 top-4 grid size-11 place-items-center rounded-full bg-slate-100 text-slate-700 transition hover:bg-orange-100 hover:text-orange-700" aria-label="Đóng"><X className="size-5" /></Dialog.Close>
       </Dialog.Content>

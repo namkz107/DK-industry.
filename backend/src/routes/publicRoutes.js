@@ -1,8 +1,8 @@
 const express = require('express');
-const Lead = require('../models/Lead');
 const Product = require('../models/Product');
 const Project = require('../models/Project');
 const Service = require('../models/Service');
+const { createPublicLead } = require('../services/leadService');
 
 const router = express.Router();
 const parseBoolean = value => value === undefined ? undefined : value === 'true';
@@ -41,10 +41,8 @@ router.get('/services', async (req, res, next) => {
 
 router.post('/leads', async (req, res, next) => {
   try {
-    const { name, phone, email, serviceType, budget, message, products } = req.body;
-    if (!name?.trim() || !phone?.trim()) return res.status(400).json({ success: false, message: 'Họ tên và số điện thoại là bắt buộc' });
-    const lead = await Lead.create({ name, phone, email, serviceType, budget, message, products });
-    res.status(201).json({ success: true, message: 'Yêu cầu đã được tiếp nhận', data: { id: lead._id, status: lead.status } });
+    const { lead, duplicate } = await createPublicLead(req.body, req.body.sourceDetails || {});
+    res.status(duplicate ? 200 : 201).json({ success: true, message: duplicate ? 'Yêu cầu này đã được tiếp nhận trước đó' : 'Yêu cầu đã được tiếp nhận', data: { id: lead._id, code: lead.code, status: lead.status, duplicate } });
   } catch (error) { next(error); }
 });
 

@@ -1,0 +1,49 @@
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { Check, ChevronDown, Download, FileUp, LoaderCircle, MessageSquareText, Send, X } from "lucide-react"
+import { useRef, useState } from "react"
+import { Button } from "@/components/ui/button"
+import { Textarea } from "@/components/ui/textarea"
+import { customerClient } from "@/lib/customer-client"
+import { formatPrice } from "@/lib/utils"
+import type { Quotation, RequestMessage } from "@/types/customer"
+
+const quoteStatuses: Record<string, string> = { sent: "Chờ phản hồi", accepted: "Đã chấp thuận", rejected: "Chưa chấp thuận", superseded: "Đã thay thế", expired: "Hết hiệu lực" }
+
+export function RequestConversation({ requestId }: { requestId: string }) {
+  const queryClient = useQueryClient()
+  const fileInput = useRef<HTMLInputElement>(null)
+  const [open, setOpen] = useState(false)
+  const [content, setContent] = useState("")
+  const [files, setFiles] = useState<File[]>([])
+  const [error, setError] = useState("")
+  const [rejecting, setRejecting] = useState<string>()
+  const [rejectNote, setRejectNote] = useState("")
+  const detail = useQuery({ queryKey: ["customer", "request", requestId], queryFn: () => customerClient.requestDetail(requestId), enabled: open })
+  const refresh = () => { void queryClient.invalidateQueries({ queryKey: ["customer", "request", requestId] }); void queryClient.invalidateQueries({ queryKey: ["customer", "requests"] }); void queryClient.invalidateQueries({ queryKey: ["customer", "summary"] }) }
+  const send = useMutation({ mutationFn: (body: FormData) => customerClient.sendRequestMessage(requestId, body), onSuccess: () => { setContent(""); setFiles([]); if (fileInput.current) fileInput.current.value = ""; refresh() } })
+  const respond = useMutation({ mutationFn: ({ quote, decision, note }: { quote: Quotation; decision: "accepted" | "rejected"; note?: string }) => customerClient.respondQuotation(requestId, quote._id, decision, note), onSuccess: () => { setRejecting(undefined); setRejectNote(""); refresh() } })
+
+  const submitMessage = () => {
+    setError("")
+    if (!content.trim() && !files.length) { setError("Nhập nội dung hoặc chọn tệp đính kèm"); return }
+    if (files.length > 3 || files.some(file => file.size > 10 * 1024 * 1024)) { setError("Tối đa 3 tệp, mỗi tệp không quá 10MB"); return }
+    const body = new FormData(); if (content.trim()) body.append("content", content.trim()); files.forEach(file => body.append("attachments", file)); send.mutate(body)
+  }
+  const download = async (message: RequestMessage, attachmentId: string, name: string) => {
+    try { const blob = await customerClient.downloadMessageAttachment(requestId, message._id, attachmentId); const url = URL.createObjectURL(blob); const anchor = document.createElement("a"); anchor.href = url; anchor.download = name; anchor.click(); setTimeout(() => URL.revokeObjectURL(url), 1000) }
+    catch (reason) { setError(reason instanceof Error ? reason.message : "Không thể tải tệp") }
+  }
+
+  return <details className="group mt-4 rounded-2xl border border-slate-200 bg-slate-50" onToggle={event => setOpen(event.currentTarget.open)}><summary className="flex min-h-13 cursor-pointer list-none items-center justify-between px-4 font-bold text-emerald-950"><span className="flex items-center gap-2"><MessageSquareText className="size-5 text-orange-600"/>Trao đổi & báo giá</span><ChevronDown className="size-5 transition group-open:rotate-180"/></summary>{open && <div className="border-t border-slate-200 p-4 sm:p-5">
+    {detail.isLoading ? <div className="grid min-h-28 place-items-center"><LoaderCircle className="size-6 animate-spin text-orange-600"/></div> : detail.error ? <ErrorText text={detail.error.message}/> : <>
+      {detail.data?.data.quotations.length ? <div className="mb-6 space-y-4"><h4 className="font-display text-lg font-bold text-emerald-950">Báo giá</h4>{detail.data.data.quotations.map(quote => <article className="overflow-hidden rounded-2xl border border-orange-200 bg-white" key={quote._id}><div className="flex flex-wrap items-center justify-between gap-3 bg-orange-50 px-4 py-3"><div><strong className="text-emerald-950">{quote.code} · Lần {quote.version}</strong><p className="mt-1 text-xs text-slate-500">Hiệu lực đến {date(quote.validUntil)}</p></div><span className="rounded-full bg-white px-3 py-1 text-xs font-black text-orange-800">{quoteStatuses[quote.status] || quote.status}</span></div><div className="p-4"><div className="overflow-x-auto"><table className="w-full min-w-[520px] text-left text-sm"><thead className="text-slate-500"><tr><th className="pb-2">Hạng mục</th><th className="pb-2 text-right">SL</th><th className="pb-2 text-right">Đơn giá</th><th className="pb-2 text-right">Thành tiền</th></tr></thead><tbody>{quote.items.map(item => <tr className="border-t border-slate-100" key={item._id}><td className="py-3 font-semibold text-slate-800">{item.description}</td><td className="py-3 text-right">{item.quantity} {item.unit}</td><td className="py-3 text-right">{formatPrice(item.unitPrice)}</td><td className="py-3 text-right font-bold">{formatPrice(item.lineTotal)}</td></tr>)}</tbody></table></div><div className="ml-auto mt-4 max-w-sm space-y-2 border-t border-slate-200 pt-3 text-sm"><p className="flex justify-between"><span>Tạm tính</span><strong>{formatPrice(quote.subtotal)}</strong></p><p className="flex justify-between"><span>VAT ({quote.taxRate}%)</span><strong>{formatPrice(quote.taxAmount)}</strong></p><p className="flex justify-between text-lg text-orange-700"><span className="font-bold">Tổng cộng</span><strong>{formatPrice(quote.total)}</strong></p></div>{quote.leadTime && <p className="mt-4 text-sm text-slate-600"><strong>Tiến độ:</strong> {quote.leadTime}</p>}{quote.paymentTerms && <p className="mt-2 text-sm text-slate-600"><strong>Thanh toán:</strong> {quote.paymentTerms}</p>}{quote.notes && <p className="mt-2 text-sm text-slate-600"><strong>Ghi chú:</strong> {quote.notes}</p>}{quote.status === "sent" && <div className="mt-5 border-t border-slate-100 pt-4">{rejecting === quote._id ? <div><Textarea value={rejectNote} onChange={event => setRejectNote(event.target.value)} placeholder="Cho chúng tôi biết điểm cần điều chỉnh về giá, tiến độ hoặc phạm vi..."/><div className="mt-3 flex flex-wrap gap-2"><Button disabled={!rejectNote.trim() || respond.isPending} onClick={() => respond.mutate({ quote, decision: "rejected", note: rejectNote })}><Send className="size-4"/>Gửi phản hồi</Button><Button variant="ghost" onClick={() => setRejecting(undefined)}>Quay lại</Button></div></div> : <div className="flex flex-wrap gap-2"><Button disabled={respond.isPending} onClick={() => { if (window.confirm(`Chấp thuận báo giá ${quote.code}?`)) respond.mutate({ quote, decision: "accepted" }) }}><Check className="size-5"/>Chấp thuận báo giá</Button><Button variant="outline" disabled={respond.isPending} onClick={() => setRejecting(quote._id)}><X className="size-5"/>Yêu cầu điều chỉnh</Button></div>}</div>}</div></article>)}</div> : null}
+      <div><h4 className="font-display text-lg font-bold text-emerald-950">Trao đổi</h4><div className="mt-3 max-h-96 space-y-3 overflow-y-auto pr-1">{detail.data?.data.messages.map(message => <article className={`max-w-[90%] rounded-2xl p-4 text-sm ${message.senderRole === "customer" ? "ml-auto bg-emerald-950 text-white" : "bg-white text-slate-700 shadow-sm"}`} key={message._id}><p className="mb-1 text-xs font-black uppercase tracking-wider opacity-60">{message.senderRole === "customer" ? "Bạn" : message.senderRole === "system" ? "Hệ thống" : "Cơ khí Đăng Khoa"}</p><p className="whitespace-pre-wrap leading-6">{message.content}</p>{message.attachments?.length > 0 && <div className="mt-3 flex flex-wrap gap-2">{message.attachments.map(file => <button className="inline-flex min-h-9 items-center gap-2 rounded-lg bg-white/15 px-3 text-xs font-bold" key={file._id} onClick={() => void download(message, file._id, file.originalName)}><Download className="size-4"/>{file.originalName}</button>)}</div>}<time className="mt-2 block text-xs opacity-50">{dateTime(message.createdAt)}</time></article>)}</div></div>
+      {!['rejected', 'cancelled'].includes(detail.data?.data.request.status || '') && <div className="mt-5 rounded-2xl bg-white p-4"><label className="text-sm font-bold text-slate-700"><span className="mb-2 block">Bổ sung thông tin</span><Textarea className="min-h-24" value={content} onChange={event => setContent(event.target.value)} placeholder="Trả lời kỹ thuật, bổ sung dung sai, tiến độ..."/></label><label className="mt-3 flex min-h-11 cursor-pointer items-center gap-2 text-sm font-bold text-slate-600"><FileUp className="size-5 text-orange-600"/><span>Đính kèm thêm bản vẽ (tối đa 3 tệp)</span><input ref={fileInput} className="sr-only" type="file" multiple accept=".pdf,.png,.jpg,.jpeg,.dxf,.dwg,.step,.stp,.iges,.igs,.zip" onChange={event => setFiles(Array.from(event.target.files || []))}/></label>{files.length > 0 && <p className="mt-1 text-xs text-slate-500">Đã chọn: {files.map(file => file.name).join(", ")}</p>}<Button className="mt-3" disabled={send.isPending} onClick={submitMessage}>{send.isPending ? <LoaderCircle className="size-5 animate-spin"/> : <Send className="size-5"/>}Gửi trao đổi</Button></div>}
+      {(error || send.error || respond.error) && <ErrorText text={error || send.error?.message || respond.error?.message || "Có lỗi xảy ra"}/>} 
+    </>}
+  </div>}</details>
+}
+
+const date = (value: string) => new Intl.DateTimeFormat("vi-VN", { dateStyle: "medium" }).format(new Date(value))
+const dateTime = (value: string) => new Intl.DateTimeFormat("vi-VN", { dateStyle: "short", timeStyle: "short" }).format(new Date(value))
+function ErrorText({ text }: { text: string }) { return <p role="alert" className="mt-3 rounded-xl bg-red-50 p-3 text-sm font-semibold text-red-700">{text}</p> }

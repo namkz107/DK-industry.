@@ -7,7 +7,10 @@ const multer = require('multer');
 const Cart = require('../models/Cart');
 const Order = require('../models/Order');
 const Product = require('../models/Product');
+const Quotation = require('../models/Quotation');
+const RequestMessage = require('../models/RequestMessage');
 const ServiceRequest = require('../models/ServiceRequest');
+const { transitionServiceRequest } = require('../services/workflowService');
 
 const router = express.Router();
 const phonePattern = /^(?:\+84|0)[0-9]{9,10}$/;
@@ -246,8 +249,11 @@ router.patch('/orders/:id/cancel', async (req, res, next) => {
 
 router.get('/requests', async (req, res, next) => {
   try {
-    const data = await ServiceRequest.find({ customer: req.user._id }).select('-attachments.storedName').sort({ createdAt: -1 }).limit(100).lean();
-    res.json({ success: true, data });
+    const requests = await ServiceRequest.find({ customer: req.user._id }).select('-attachments.storedName').sort({ createdAt: -1 }).limit(100).lean();
+    const quotations = await Quotation.find({ request: { $in: requests.map(item => item._id) }, status: { $ne: 'draft' } }).sort({ version: -1 }).lean();
+    const latestByRequest = new Map();
+    for (const quotation of quotations) if (!latestByRequest.has(String(quotation.request))) latestByRequest.set(String(quotation.request), quotation);
+    res.json({ success: true, data: requests.map(request => ({ ...request, latestQuotation: latestByRequest.get(String(request._id)) || null })) });
   } catch (error) { next(error); }
 });
 
@@ -256,7 +262,12 @@ router.get('/requests/:id', async (req, res, next) => {
     if (!validId(req.params.id)) fail('Yêu cầu không hợp lệ', 404);
     const request = await ServiceRequest.findOne({ _id: req.params.id, customer: req.user._id }).select('-attachments.storedName').lean();
     if (!request) fail('Không tìm thấy yêu cầu', 404);
-    res.json({ success: true, data: request });
+    const [messages, quotations] = await Promise.all([
+      RequestMessage.find({ request: request._id, visibility: 'customer' }).sort({ createdAt: 1 }).limit(200).lean(),
+      Quotation.find({ request: request._id, customer: req.user._id, status: { $ne: 'draft' } }).sort({ version: -1 }).lean()
+    ]);
+    await RequestMessage.updateMany({ request: request._id, visibility: 'customer', senderRole: { $in: ['staff', 'admin', 'system'] }, readByCustomerAt: null }, { readByCustomerAt: new Date() });
+    res.json({ success: true, data: { request, messages, quotations } });
   } catch (error) { next(error); }
 });
 
@@ -285,10 +296,82 @@ router.post('/requests', upload.array('attachments', 5), async (req, res, next) 
       productSnapshot: product ? { name: product.name, sku: product.sku, unit: product.unit } : undefined,
       contact: { name: req.user.name, phone: req.user.phone, email: req.user.email, company: req.user.company },
       attachments: (req.files || []).map(file => ({ originalName: file.originalname, storedName: file.filename, mimeType: file.mimetype, size: file.size })),
-      timeline: [{ status: 'submitted', message: 'Yêu cầu đã được tiếp nhận và chờ kỹ thuật kiểm tra.' }]
+      timeline: [{ status: 'submitted', message: 'Yêu cầu đã được tiếp nhận và chờ kỹ thuật kiểm tra.', actorType: 'customer', actor: req.user._id }],
+      lastCustomerMessageAt: new Date()
     });
+    await RequestMessage.create({ request: request._id, sender: req.user._id, senderRole: 'customer', visibility: 'customer', content: description, readByCustomerAt: new Date() });
     res.status(201).json({ success: true, message: 'Đã gửi yêu cầu, kỹ thuật sẽ phản hồi trong giờ làm việc', data: { id: request._id, code: request.code, status: request.status } });
   } catch (error) { await removeUploadedFiles(req.files); next(error); }
+});
+
+router.post('/requests/:id/messages', upload.array('attachments', 3), async (req, res, next) => {
+  try {
+    if (!validId(req.params.id)) fail('Yêu cầu không hợp lệ', 404);
+    const request = await ServiceRequest.findOne({ _id: req.params.id, customer: req.user._id });
+    if (!request) fail('Không tìm thấy yêu cầu', 404);
+    if (['rejected', 'cancelled'].includes(request.status)) fail('Yêu cầu đã đóng, không thể gửi thêm trao đổi', 409);
+    const content = clean(req.body.content);
+    if (!content && !req.files?.length) fail('Vui lòng nhập nội dung hoặc đính kèm tệp');
+    if (content.length > 3000) fail('Nội dung trao đổi tối đa 3.000 ký tự');
+    const message = await RequestMessage.create({
+      request: request._id, sender: req.user._id, senderRole: 'customer', visibility: 'customer',
+      content: content || 'Khách hàng đã gửi thêm tệp đính kèm.', readByCustomerAt: new Date(),
+      attachments: (req.files || []).map(file => ({ originalName: file.originalname, storedName: file.filename, mimeType: file.mimetype, size: file.size }))
+    });
+    request.lastCustomerMessageAt = new Date();
+    if (request.status === 'need_more_info') {
+      transitionServiceRequest(request, 'reviewing', { message: 'Khách hàng đã bổ sung thông tin.', actorType: 'customer', actor: req.user._id });
+    }
+    await request.save();
+    res.status(201).json({ success: true, message: 'Đã gửi trao đổi', data: { id: message._id, createdAt: message.createdAt } });
+  } catch (error) { await removeUploadedFiles(req.files); next(error); }
+});
+
+router.get('/requests/:requestId/messages/:messageId/attachments/:attachmentId', async (req, res, next) => {
+  try {
+    if (![req.params.requestId, req.params.messageId, req.params.attachmentId].every(validId)) fail('Tệp đính kèm không hợp lệ', 404);
+    const request = await ServiceRequest.exists({ _id: req.params.requestId, customer: req.user._id });
+    if (!request) fail('Không tìm thấy tệp đính kèm', 404);
+    const message = await RequestMessage.findOne({ _id: req.params.messageId, request: req.params.requestId, visibility: 'customer' }).select('+attachments.storedName');
+    const attachment = message?.attachments.id(req.params.attachmentId);
+    if (!attachment?.storedName) fail('Không tìm thấy tệp đính kèm', 404);
+    res.download(path.join(uploadDirectory, attachment.storedName), attachment.originalName);
+  } catch (error) { next(error); }
+});
+
+router.patch('/requests/:requestId/quotations/:quotationId/respond', async (req, res, next) => {
+  try {
+    if (!validId(req.params.requestId) || !validId(req.params.quotationId)) fail('Báo giá không hợp lệ', 404);
+    const decision = clean(req.body.decision);
+    if (!['accepted', 'rejected'].includes(decision)) fail('Phản hồi báo giá không hợp lệ');
+    const request = await ServiceRequest.findOne({ _id: req.params.requestId, customer: req.user._id });
+    if (!request) fail('Không tìm thấy yêu cầu', 404);
+    const latest = await Quotation.findOne({ request: request._id, customer: req.user._id, status: 'sent' }).sort({ version: -1 });
+    if (!latest || String(latest._id) !== req.params.quotationId) fail('Báo giá không còn chờ phản hồi', 409);
+    if (latest.validUntil < new Date()) {
+      latest.status = 'expired'; await latest.save();
+      if (request.status === 'quoted') { transitionServiceRequest(request, 'reviewing', { message: `Báo giá ${latest.code} đã hết hiệu lực.` }); await request.save(); }
+      fail('Báo giá đã hết hiệu lực, vui lòng yêu cầu báo giá mới', 409);
+    }
+    const nextStatus = decision === 'accepted' ? 'accepted' : 'reviewing';
+    transitionServiceRequest(request, nextStatus, { message: decision === 'accepted' ? `Khách hàng đã chấp thuận báo giá ${latest.code}.` : `Khách hàng chưa chấp thuận báo giá ${latest.code}.`, actorType: 'customer', actor: req.user._id });
+    const responseNote = clean(req.body.note).slice(0, 1000);
+    const quotation = await Quotation.findOneAndUpdate(
+      { _id: latest._id, status: 'sent' },
+      { status: decision, respondedAt: new Date(), responseNote },
+      { new: true, runValidators: true }
+    );
+    if (!quotation) fail('Báo giá đã được phản hồi trước đó', 409);
+    if (decision === 'accepted') {
+      await Quotation.updateMany({ request: request._id, _id: { $ne: quotation._id }, status: 'sent' }, { status: 'superseded' });
+    } else {
+      request.timeline[request.timeline.length - 1].message = `Khách hàng chưa chấp thuận báo giá ${quotation.code}${responseNote ? `: ${responseNote}` : '.'}`;
+    }
+    request.lastCustomerMessageAt = new Date();
+    await request.save();
+    await RequestMessage.create({ request: request._id, sender: req.user._id, senderRole: 'customer', visibility: 'customer', content: decision === 'accepted' ? `Tôi chấp thuận báo giá ${quotation.code}.` : `Tôi chưa chấp thuận báo giá ${quotation.code}.${responseNote ? ` ${responseNote}` : ''}`, readByCustomerAt: new Date() });
+    res.json({ success: true, message: decision === 'accepted' ? 'Đã chấp thuận báo giá' : 'Đã gửi phản hồi báo giá', data: quotation });
+  } catch (error) { next(error); }
 });
 
 router.get('/requests/:requestId/attachments/:attachmentId', async (req, res, next) => {
@@ -310,6 +393,7 @@ router.patch('/requests/:id/cancel', async (req, res, next) => {
       { new: true }
     );
     if (!request) fail('Không thể hủy yêu cầu ở trạng thái hiện tại', 409);
+    await RequestMessage.create({ request: request._id, sender: req.user._id, senderRole: 'customer', visibility: 'customer', content: 'Khách hàng đã hủy yêu cầu.', readByCustomerAt: new Date() });
     res.json({ success: true, message: 'Đã hủy yêu cầu', data: request });
   } catch (error) { next(error); }
 });

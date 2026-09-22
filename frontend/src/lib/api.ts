@@ -7,15 +7,16 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     ...options,
     headers: { "Content-Type": "application/json", ...options?.headers },
   })
-  if (!response.ok) throw new Error("Không thể kết nối máy chủ")
-  return response.json() as Promise<T>
+  const body = await response.json().catch(() => ({}))
+  if (!response.ok) throw new Error(body.message || "Không thể kết nối máy chủ")
+  return body as T
 }
 
 export const api = {
   products: () => request<ApiList<Product>>("/products?limit=100"),
   projects: () => request<ApiList<Project>>("/projects?featured=true"),
   services: () => request<ApiList<Service>>("/services"),
-  createLead: (payload: unknown) => request<{ success: boolean; message: string }>("/leads", {
+  createLead: (payload: unknown) => request<{ success: boolean; message: string; data: { id: string; code: string; status: string; duplicate: boolean } }>("/leads", {
     method: "POST",
     body: JSON.stringify(payload),
   }),

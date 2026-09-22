@@ -36,7 +36,7 @@ Dán chuỗi vừa sinh vào `JWT_SECRET`, sau đó sửa các giá trị sau tr
 ADMIN_SEED_NAME=Họ tên quản trị viên
 ADMIN_SEED_EMAIL=email-thật-của-bạn@example.com
 ADMIN_SEED_PHONE=09xxxxxxxx
-ADMIN_SEED_PASSWORD=MatKhauManhCoSo123
+ADMIN_SEED_PASSWORD=<mat-khau-rieng-du-dai-va-khong-dung-lai>
 ```
 
 Chạy:

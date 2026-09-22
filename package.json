@@ -11,7 +11,8 @@
     "backend": "npm run dev --prefix backend",
     "build": "npm run build --prefix frontend",
     "seed": "npm run seed --prefix backend",
-    "seed:admin": "npm run seed:admin --prefix backend"
+    "seed:admin": "npm run seed:admin --prefix backend",
+    "migrate:lead-service": "npm run migrate:lead-service --prefix backend"
   },
   "devDependencies": {
     "concurrently": "^9.2.1"
