@@ -1,6 +1,18 @@
 import { ArrowUpRight, Mail, MapPin, Phone } from "lucide-react"
 import { Link } from "react-router-dom"
 
+const logoUrl = import.meta.env.VITE_CLOUDINARY_LOGO_URL || "https://res.cloudinary.com/dgbounqav/image/upload/f_auto,q_auto/logo_dk_uhmnyn"
+
 export function SiteFooter() {
-  return <footer className="bg-emerald-950 text-white"><div className="container-page grid gap-12 py-16 md:grid-cols-[1.4fr_1fr_1fr]"><div><p className="font-display text-xl font-black tracking-wider">CTY CPTV ĐẦU TƯ XD  TM ĐĂNG KHOA</p><p className="mt-5 max-w-md text-base leading-7 text-emerald-50/65">Đối tác giải pháp tư vấn, chế tạo và thi công cơ khí công nghiệp toàn diện.</p></div><div><h3 className="text-sm font-bold uppercase tracking-widest text-orange-400">Khám phá</h3><div className="mt-5 grid gap-3 text-emerald-50/70"><Link to="/dich-vu">Dịch vụ</Link><Link to="/du-an">Dự án tiêu biểu</Link><Link to="/san-pham">Thiết bị & vật tư</Link></div></div><div><h3 className="text-sm font-bold uppercase tracking-widest text-orange-400">Liên hệ</h3><div className="mt-5 grid gap-4 text-sm text-emerald-50/75"><a className="flex gap-3" href="tel:0912345678"><Phone className="size-5 text-orange-400" />096 5243 386</a><a className="flex gap-3" href="mailto:contact@dkindustry.vn"><Mail className="size-5 text-orange-400" />namkz107@gmail.com</a><p className="flex gap-3"><MapPin className="size-5 shrink-0 text-orange-400" />Hà Nội, Việt Nam</p></div></div></div><div className="border-t border-white/10"><div className="container-page flex flex-col gap-3 py-5 text-xs text-emerald-50/45 sm:flex-row sm:justify-between"><span>© 2026 DK Industry. All rights reserved.</span><a className="flex items-center gap-1" href="/admin">Quản trị hệ thống <ArrowUpRight className="size-3" /></a></div></div></footer>
+  return <footer className="bg-emerald-950 text-white">
+    <div className="container-page grid gap-12 py-16 md:grid-cols-[1.4fr_1fr_1fr]">
+      <div>
+        <Link to="/" className="inline-flex rounded-xl bg-white p-2" aria-label="Công ty Đăng Khoa - Trang chủ"><img className="h-20 w-auto object-contain" src={logoUrl} alt="Logo Công ty Đăng Khoa"/></Link>
+        <p className="mt-5 max-w-md text-base leading-7 text-emerald-50/65">Đối tác giải pháp tư vấn, chế tạo và thi công cơ khí công nghiệp toàn diện.</p>
+      </div>
+      <div><h3 className="text-sm font-bold uppercase tracking-widest text-orange-400">Khám phá</h3><div className="mt-5 grid gap-3 text-emerald-50/70"><Link to="/gioi-thieu">Về chúng tôi</Link><Link to="/dich-vu">Dịch vụ</Link><Link to="/du-an">Dự án tiêu biểu</Link><Link to="/san-pham">Thiết bị & vật tư</Link></div></div>
+      <div><h3 className="text-sm font-bold uppercase tracking-widest text-orange-400">Liên hệ</h3><div className="mt-5 grid gap-4 text-sm text-emerald-50/75"><a className="flex gap-3" href="tel:0965243386"><Phone className="size-5 text-orange-400" />096 5243 386</a><a className="flex gap-3" href="mailto:namkz107@gmail.com"><Mail className="size-5 text-orange-400" />namkz107@gmail.com</a><p className="flex gap-3"><MapPin className="size-5 shrink-0 text-orange-400" />Hà Nội, Việt Nam</p></div></div>
+    </div>
+    <div className="border-t border-white/10"><div className="container-page flex flex-col gap-3 py-5 text-xs text-emerald-50/45 sm:flex-row sm:justify-between"><span>© 2026 DK Industry. All rights reserved.</span><a className="flex items-center gap-1" href="/admin">Quản trị hệ thống <ArrowUpRight className="size-3" /></a></div></div>
+  </footer>
 }
