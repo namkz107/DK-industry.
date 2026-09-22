@@ -2,6 +2,7 @@
   "name": "dk-industry",
   "version": "1.0.0",
   "private": true,
+  "packageManager": "yarn@1.22.22",
   "scripts": {
     "start": "concurrently \"npm start --prefix frontend\" \"npm run dev --prefix backend\"",
     "install:all": "npm install --prefix frontend && npm install --prefix backend",
@@ -9,7 +10,8 @@
     "frontend": "npm start --prefix frontend",
     "backend": "npm run dev --prefix backend",
     "build": "npm run build --prefix frontend",
-    "seed": "npm run seed --prefix backend"
+    "seed": "npm run seed --prefix backend",
+    "seed:admin": "npm run seed:admin --prefix backend"
   },
   "devDependencies": {
     "concurrently": "^9.2.1"

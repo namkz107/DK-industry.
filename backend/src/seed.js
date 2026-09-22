@@ -4,6 +4,7 @@ const Product = require('./models/Product');
 const Project = require('./models/Project');
 const Lead = require('./models/Lead');
 const Service = require('./models/Service');
+const bootstrapAdmin = require('./services/bootstrapAdmin');
 
 const products = [
   { name: 'Bộ truyền động công nghiệp', slug: 'bo-truyen-dong-cong-nghiep', sku: 'DK-TD-001', category: 'Truyền động', price: 4850000, unit: 'bộ', stock: 18, featured: true, image: 'https://images.unsplash.com/photo-1581092160562-40aa08e78837?auto=format&fit=crop&w=800&q=80' },
@@ -65,7 +66,9 @@ async function seed() {
     Service.insertMany(services),
     Lead.insertMany(leads)
   ]);
+  const adminStatus = await bootstrapAdmin();
   console.log(`Seed complete: ${createdProducts.length} products, ${createdProjects.length} projects, ${createdServices.length} services, ${createdLeads.length} leads`);
+  console.log(`Admin account: ${adminStatus}`);
   process.exit(0);
 }
 seed().catch(error => { console.error(error); process.exit(1); });
