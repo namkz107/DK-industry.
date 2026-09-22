@@ -13,6 +13,7 @@ Website giới thiệu năng lực, dự án và sản phẩm dành cho doanh ng
 - Dữ liệu fallback ở frontend và script seed MongoDB để chạy demo nhanh.
 - Authentication cho Customer, Staff và Admin bằng access token ngắn hạn + refresh cookie HttpOnly.
 - Phân quyền API: Staff xử lý dashboard/lead; chỉ Admin được thay đổi hoặc xóa nội dung hệ thống.
+- Trung tâm Customer: hồ sơ, tối đa 5 địa chỉ, giỏ hàng MongoDB, đặt/hủy đơn, lịch sử trạng thái và yêu cầu gia công kèm bản vẽ riêng tư.
 
 ## Frontend stack chuẩn của dự án
 
@@ -78,6 +79,11 @@ Nếu chưa bật MongoDB/backend, frontend vẫn sử dụng dữ liệu mẫu 
 | POST | `/api/auth/logout` | Thu hồi phiên đăng nhập hiện tại |
 | GET | `/api/auth/me` | Xem tài khoản đang đăng nhập |
 | POST | `/api/auth/change-password` | Đổi mật khẩu và thu hồi toàn bộ phiên |
+| GET/PATCH | `/api/customer/profile` | Xem/cập nhật hồ sơ Customer |
+| POST/PATCH/DELETE | `/api/customer/addresses/:id` | Quản lý địa chỉ giao hàng |
+| GET/POST/PATCH/DELETE | `/api/customer/cart/*` | Quản lý giỏ hàng theo tài khoản |
+| GET/POST | `/api/customer/orders` | Xem/tạo đơn hàng thương mại |
+| GET/POST | `/api/customer/requests` | Xem/gửi yêu cầu gia công và báo giá |
 | GET | `/api/projects` | Danh sách dự án đã xuất bản |
 | GET | `/api/products` | Danh sách sản phẩm đang hoạt động |
 | GET | `/api/services` | Danh mục dịch vụ đã xuất bản |
@@ -91,3 +97,4 @@ Các route `/api/admin/*` yêu cầu `Authorization: Bearer <access-token>`. Sta
 
 Quy chuẩn kiểm duyệt nội dung và phòng tránh SEO spam nằm tại [`docs/CONTENT-SECURITY.md`](docs/CONTENT-SECURITY.md).
 Kiến trúc, luồng sử dụng và checklist production của Authentication nằm tại [`docs/AUTHENTICATION.md`](docs/AUTHENTICATION.md).
+Nghiệp vụ Customer, trạng thái và kịch bản kiểm tra nằm tại [`docs/CUSTOMER.md`](docs/CUSTOMER.md).

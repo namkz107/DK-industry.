@@ -1,0 +1,38 @@
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { LoaderCircle, Minus, PackageCheck, Plus, ShoppingCart, Trash2 } from "lucide-react"
+import { useEffect, useState } from "react"
+import { Link, useNavigate } from "react-router-dom"
+import { CustomerShell } from "@/components/customer/customer-shell"
+import { Button } from "@/components/ui/button"
+import { Textarea } from "@/components/ui/textarea"
+import { usePageMeta } from "@/hooks/use-page-meta"
+import { customerClient } from "@/lib/customer-client"
+import { formatPrice } from "@/lib/utils"
+
+export function CartPage() {
+  usePageMeta("Giỏ hàng", "Kiểm tra sản phẩm và tạo đơn hàng thương mại.")
+  const queryClient = useQueryClient()
+  const navigate = useNavigate()
+  const cart = useQuery({ queryKey: ["customer", "cart"], queryFn: customerClient.cart })
+  const profile = useQuery({ queryKey: ["customer", "profile"], queryFn: customerClient.profile })
+  const [addressId, setAddressId] = useState("")
+  const [paymentMethod, setPaymentMethod] = useState<"cod" | "bank_transfer">("cod")
+  const [customerNote, setCustomerNote] = useState("")
+
+  useEffect(() => { if (!addressId && profile.data?.data.addresses.length) setAddressId((profile.data.data.addresses.find(item => item.isDefault) || profile.data.data.addresses[0])._id) }, [addressId, profile.data])
+  const refresh = () => { void queryClient.invalidateQueries({ queryKey: ["customer", "cart"] }); void queryClient.invalidateQueries({ queryKey: ["customer", "summary"] }) }
+  const update = useMutation({ mutationFn: ({ id, quantity }: { id: string; quantity: number }) => customerClient.updateCartItem(id, quantity), onSuccess: refresh })
+  const remove = useMutation({ mutationFn: customerClient.removeCartItem, onSuccess: refresh })
+  const checkout = useMutation({ mutationFn: customerClient.createOrder, onSuccess: result => { refresh(); void queryClient.invalidateQueries({ queryKey: ["customer", "orders"] }); navigate("/tai-khoan/don-hang", { state: { createdCode: result.data.code } }) } })
+  const data = cart.data?.data
+
+  return <CustomerShell title="Giỏ hàng" description="Giá sản phẩm được kiểm tra lại tại thời điểm đặt. Nhân viên sẽ xác nhận tồn kho và phí vận chuyển trước khi giao.">
+    {cart.isLoading ? <Loading/> : !data?.items.length ? <div className="rounded-3xl border border-dashed border-slate-300 bg-white py-16 text-center"><ShoppingCart className="mx-auto size-14 text-slate-300"/><h2 className="mt-5 font-display text-2xl font-bold text-emerald-950">Giỏ hàng đang trống</h2><p className="mt-2 text-slate-600">Chọn các sản phẩm có giá niêm yết để bắt đầu đặt hàng.</p><Button asChild className="mt-6"><Link to="/san-pham">Xem sản phẩm</Link></Button></div> : <div className="grid gap-6 xl:grid-cols-[1.35fr_.65fr]">
+      <div className="space-y-4">{data.items.map(item => <article className="flex flex-col gap-4 rounded-3xl border border-slate-200 bg-white p-5 sm:flex-row sm:items-center" key={item.product._id}><img className="size-24 rounded-2xl object-cover" src={item.product.image} alt={item.product.name}/><div className="min-w-0 flex-1"><span className="text-xs font-bold uppercase tracking-wider text-orange-700">{item.product.category}</span><h2 className="mt-1 font-display text-xl font-bold text-emerald-950">{item.product.name}</h2><p className="mt-2 font-bold text-orange-700">{formatPrice(item.product.price)} / {item.product.unit}</p><p className="mt-1 text-xs text-slate-500">Tồn tham khảo: {item.product.stock ?? 0} {item.product.unit}</p></div><div className="flex items-center justify-between gap-3 sm:flex-col sm:items-end"><strong className="text-lg text-emerald-950">{formatPrice(item.lineTotal)}</strong><div className="flex items-center rounded-xl border border-slate-200"><button className="grid size-11 place-items-center" aria-label="Giảm số lượng" disabled={update.isPending || item.quantity <= 1} onClick={() => update.mutate({ id: item.product._id, quantity: item.quantity - 1 })}><Minus className="size-4"/></button><span className="min-w-10 text-center font-bold">{item.quantity}</span><button className="grid size-11 place-items-center" aria-label="Tăng số lượng" disabled={update.isPending || item.quantity >= (item.product.stock || 0)} onClick={() => update.mutate({ id: item.product._id, quantity: item.quantity + 1 })}><Plus className="size-4"/></button></div><Button size="icon" variant="ghost" aria-label="Xóa khỏi giỏ" onClick={() => remove.mutate(item.product._id)}><Trash2 className="size-5 text-red-600"/></Button></div></article>)}{(update.error || remove.error) && <ErrorText error={(update.error || remove.error) as Error}/>}</div>
+      <aside className="h-fit rounded-3xl bg-emerald-950 p-6 text-white xl:sticky xl:top-28"><div className="flex items-center gap-3"><PackageCheck className="size-7 text-orange-400"/><h2 className="font-display text-2xl font-bold">Xác nhận đặt hàng</h2></div><div className="mt-6 space-y-3 border-b border-white/10 pb-5"><p className="flex justify-between text-sm text-emerald-50/70"><span>{data.itemCount} sản phẩm</span><strong className="text-white">{formatPrice(data.subtotal)}</strong></p><p className="flex justify-between text-sm text-emerald-50/70"><span>Phí vận chuyển</span><strong className="text-orange-300">Xác nhận sau</strong></p></div><p className="mt-5 flex justify-between"><span className="font-bold">Tạm tính</span><strong className="text-xl text-orange-300">{formatPrice(data.subtotal)}</strong></p><label className="mt-6 block text-sm font-bold"><span className="mb-2 block">Địa chỉ giao hàng</span><select className="field-select text-slate-900" value={addressId} onChange={event => setAddressId(event.target.value)}><option value="">Chọn địa chỉ</option>{profile.data?.data.addresses.map(address => <option value={address._id} key={address._id}>{address.label} — {address.province}</option>)}</select></label>{!profile.data?.data.addresses.length && <p className="mt-2 rounded-xl bg-white/10 p-3 text-sm text-orange-200">Bạn cần <Link className="font-bold underline" to="/tai-khoan/ho-so">thêm địa chỉ giao hàng</Link> trước.</p>}<label className="mt-5 block text-sm font-bold"><span className="mb-2 block">Thanh toán</span><select className="field-select text-slate-900" value={paymentMethod} onChange={event => setPaymentMethod(event.target.value as "cod" | "bank_transfer")}><option value="cod">Thanh toán khi nhận hàng</option><option value="bank_transfer">Chuyển khoản sau khi xác nhận</option></select></label><label className="mt-5 block text-sm font-bold"><span className="mb-2 block">Ghi chú</span><Textarea className="min-h-24 text-slate-900" value={customerNote} onChange={event => setCustomerNote(event.target.value)} placeholder="Thời gian nhận, yêu cầu hóa đơn..."/></label>{checkout.error && <ErrorText error={checkout.error}/>}<Button className="mt-5 w-full" size="lg" disabled={!addressId || checkout.isPending} onClick={() => checkout.mutate({ addressId, paymentMethod, customerNote })}>{checkout.isPending ? <><LoaderCircle className="size-5 animate-spin"/>Đang tạo đơn...</> : "Đặt hàng"}</Button><p className="mt-4 text-xs leading-5 text-emerald-50/60">Đơn mới ở trạng thái “Chờ xác nhận”. Sản phẩm chưa được giữ kho cho đến khi nhân viên liên hệ xác nhận.</p></aside>
+    </div>}
+  </CustomerShell>
+}
+
+function Loading() { return <div className="grid min-h-60 place-items-center"><LoaderCircle className="size-8 animate-spin text-orange-600"/></div> }
+function ErrorText({ error }: { error: Error }) { return <p role="alert" className="mt-4 rounded-xl bg-red-50 p-3 text-sm font-semibold text-red-700">{error.message}</p> }

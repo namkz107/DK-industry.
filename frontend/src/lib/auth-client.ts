@@ -17,6 +17,17 @@ async function publicPost<T>(path: string, payload?: unknown) {
   return parse<T>(response)
 }
 
+async function authenticatedFetch(path: string, options: RequestInit = {}, retry = true): Promise<Response> {
+  const headers = new Headers(options.headers)
+  if (options.body && !(options.body instanceof FormData) && !headers.has("Content-Type")) headers.set("Content-Type", "application/json")
+  headers.set("Authorization", `Bearer ${accessToken}`)
+  const response = await fetch(`${API_URL}${path}`, { ...options, credentials: "include", headers })
+  if (response.status === 401 && retry) {
+    try { await refreshSession(); return authenticatedFetch(path, options, false) } catch { accessToken = "" }
+  }
+  return response
+}
+
 function refreshSession() {
   if (!refreshRequest) {
     refreshRequest = publicPost<ApiResponse<AuthPayload>>("/auth/refresh")
@@ -47,11 +58,13 @@ export const authClient = {
     try { await publicPost("/auth/logout") } finally { accessToken = "" }
   },
   async authenticated<T>(path: string, options: RequestInit = {}, retry = true): Promise<T> {
-    const response = await fetch(`${API_URL}${path}`, { ...options, credentials: "include", headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}`, ...options.headers } })
-    if (response.status === 401 && retry) {
-      try { await this.refresh(); return this.authenticated<T>(path, options, false) } catch { accessToken = "" }
-    }
+    const response = await authenticatedFetch(path, options, retry)
     return parse<T>(response)
+  },
+  async download(path: string) {
+    const response = await authenticatedFetch(path)
+    if (!response.ok) await parse(response)
+    return response.blob()
   },
   me() { return this.authenticated<ApiResponse<{ user: AuthUser }>>("/auth/me") },
   changePassword(payload: { currentPassword: string; newPassword: string }) {

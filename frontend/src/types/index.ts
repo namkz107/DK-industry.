@@ -7,6 +7,8 @@ export interface Product {
   unit?: string
   image: string
   stock?: number
+  priceOnRequest?: boolean
+  sku?: string
 }
 
 export interface Project {

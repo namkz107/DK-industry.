@@ -1,5 +1,6 @@
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useEffect, useMemo, useState, type PropsWithChildren } from "react"
+import { useQueryClient } from "@tanstack/react-query"
 import { authClient } from "@/lib/auth-client"
 import type { AuthUser } from "@/types/auth"
 
@@ -9,11 +10,13 @@ interface AuthContextValue {
   login: (payload: { identifier: string; password: string }) => Promise<AuthUser>
   register: (payload: { name: string; email: string; phone: string; password: string }) => Promise<AuthUser>
   logout: () => Promise<void>
+  updateUser: (values: Partial<AuthUser>) => void
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
 
 export function AuthProvider({ children }: PropsWithChildren) {
+  const queryClient = useQueryClient()
   const [user, setUser] = useState<AuthUser | null>(null)
   const [ready, setReady] = useState(false)
 
@@ -26,10 +29,11 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const value = useMemo<AuthContextValue>(() => ({
     user,
     ready,
-    login: async payload => { const next = await authClient.login(payload); setUser(next); return next },
-    register: async payload => { const next = await authClient.register(payload); setUser(next); return next },
-    logout: async () => { await authClient.logout(); setUser(null) },
-  }), [user, ready])
+    login: async payload => { const next = await authClient.login(payload); queryClient.removeQueries({ queryKey: ["customer"] }); setUser(next); return next },
+    register: async payload => { const next = await authClient.register(payload); queryClient.removeQueries({ queryKey: ["customer"] }); setUser(next); return next },
+    logout: async () => { try { await authClient.logout() } finally { queryClient.removeQueries({ queryKey: ["customer"] }); setUser(null) } },
+    updateUser: values => setUser(current => current ? { ...current, ...values } : current),
+  }), [user, ready, queryClient])
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
