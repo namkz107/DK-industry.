@@ -19,6 +19,18 @@ export interface Project {
   image: string
 }
 
+export interface Service {
+  _id: string
+  name: string
+  slug: string
+  summary: string
+  description?: string
+  capabilities: string[]
+  materials: string[]
+  applications: string[]
+  image: string
+}
+
 export interface ApiList<T> {
   success: boolean
   count: number

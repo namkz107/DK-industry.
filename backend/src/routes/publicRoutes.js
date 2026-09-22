@@ -2,6 +2,7 @@ const express = require('express');
 const Lead = require('../models/Lead');
 const Product = require('../models/Product');
 const Project = require('../models/Project');
+const Service = require('../models/Service');
 
 const router = express.Router();
 const parseBoolean = value => value === undefined ? undefined : value === 'true';
@@ -25,6 +26,15 @@ router.get('/products', async (req, res, next) => {
     if (req.query.category) query.category = req.query.category;
     if (req.query.search) query.$text = { $search: req.query.search };
     const data = await Product.find(query).sort({ featured: -1, createdAt: -1 }).limit(Math.min(Number(req.query.limit) || 20, 100));
+    res.json({ success: true, count: data.length, data });
+  } catch (error) { next(error); }
+});
+
+router.get('/services', async (req, res, next) => {
+  try {
+    const query = { published: true };
+    if (req.query.featured !== undefined) query.featured = parseBoolean(req.query.featured);
+    const data = await Service.find(query).sort({ order: 1, createdAt: -1 });
     res.json({ success: true, count: data.length, data });
   } catch (error) { next(error); }
 });

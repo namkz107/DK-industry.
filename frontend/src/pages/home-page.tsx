@@ -9,6 +9,7 @@ import { fallbackProducts, fallbackProjects } from "@/data/fallback"
 import { api } from "@/lib/api"
 import { formatPrice } from "@/lib/utils"
 import type { LayoutContext } from "@/components/app-layout"
+import { usePageMeta } from "@/hooks/use-page-meta"
 
 const services = [
   { icon: Ruler, title: "Tư vấn kỹ thuật", text: "Khảo sát, thiết kế giải pháp và tối ưu dây chuyền đúng mục tiêu sản xuất." },
@@ -18,6 +19,7 @@ const services = [
 ]
 
 export function HomePage() {
+  usePageMeta("Trang chủ", "DK Industry cung cấp dịch vụ cắt laser, chấn gấp, gia công CNC và thiết bị công nghiệp theo yêu cầu.")
   const { openQuote } = useOutletContext<LayoutContext>()
   const projectQuery = useQuery({ queryKey: ["projects", "featured"], queryFn: api.projects, staleTime: 5 * 60_000, retry: 1 })
   const productQuery = useQuery({ queryKey: ["products", "featured"], queryFn: api.products, staleTime: 5 * 60_000, retry: 1 })

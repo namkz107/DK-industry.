@@ -8,6 +8,8 @@ Website giới thiệu năng lực, dự án và sản phẩm dành cho doanh ng
 - Form yêu cầu tư vấn/RFQ có thể đính kèm các sản phẩm đã chọn.
 - API lưu và quản lý lead theo pipeline: mới, đã liên hệ, đã báo giá, thắng hoặc mất.
 - CRUD API cho dự án và sản phẩm; thống kê CRM mini cho dashboard.
+- Danh mục dịch vụ cơ khí thực tế: laser CNC, chấn gấp, gia công chính xác, Jig, hàn và hệ thống công nghiệp.
+- Rate limiting và kiểm tra khóa nguy hiểm để hạn chế spam form/MongoDB injection.
 - Dữ liệu fallback ở frontend và script seed MongoDB để chạy demo nhanh.
 - Header bảo vệ admin bằng `x-admin-key` khi `ADMIN_API_KEY` được cấu hình.
 
@@ -65,6 +67,7 @@ Nếu chưa bật MongoDB/backend, frontend vẫn sử dụng dữ liệu mẫu 
 |---|---|---|
 | GET | `/api/projects` | Danh sách dự án đã xuất bản |
 | GET | `/api/products` | Danh sách sản phẩm đang hoạt động |
+| GET | `/api/services` | Danh mục dịch vụ đã xuất bản |
 | POST | `/api/leads` | Gửi yêu cầu tư vấn / báo giá |
 | GET | `/api/admin/dashboard` | Thống kê CRM mini |
 | GET/PATCH | `/api/admin/leads` | Danh sách/cập nhật trạng thái lead |
@@ -72,3 +75,5 @@ Nếu chưa bật MongoDB/backend, frontend vẫn sử dụng dữ liệu mẫu 
 | POST/PATCH/DELETE | `/api/admin/projects/:id` | Quản trị dự án |
 
 Các route `/api/admin/*` yêu cầu header `x-admin-key` nếu đã thiết lập `ADMIN_API_KEY`. Trước khi production cần thay toàn bộ thông tin liên hệ, hình ảnh demo và cấu hình email/Zalo/thanh toán thực tế.
+
+Quy chuẩn kiểm duyệt nội dung và phòng tránh SEO spam nằm tại [`docs/CONTENT-SECURITY.md`](docs/CONTENT-SECURITY.md).

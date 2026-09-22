@@ -2,6 +2,7 @@ const express = require('express');
 const Lead = require('../models/Lead');
 const Product = require('../models/Product');
 const Project = require('../models/Project');
+const Service = require('../models/Service');
 
 const router = express.Router();
 
@@ -29,7 +30,7 @@ router.patch('/leads/:id', async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
-for (const [path, Model] of [['products', Product], ['projects', Project]]) {
+for (const [path, Model] of [['products', Product], ['projects', Project], ['services', Service]]) {
   router.post(`/${path}`, async (req, res, next) => { try { res.status(201).json({ success: true, data: await Model.create(req.body) }); } catch (error) { next(error); } });
   router.patch(`/${path}/:id`, async (req, res, next) => { try { res.json({ success: true, data: await Model.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true }) }); } catch (error) { next(error); } });
   router.delete(`/${path}/:id`, async (req, res, next) => { try { await Model.findByIdAndDelete(req.params.id); res.status(204).end(); } catch (error) { next(error); } });
