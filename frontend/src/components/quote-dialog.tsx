@@ -48,7 +48,7 @@ export function QuoteDialog({ open, onOpenChange, product }: { open: boolean; on
           <Field label="Mô tả yêu cầu" error={form.formState.errors.message?.message}><Textarea placeholder="Loại công trình, thông số, số lượng, tiến độ mong muốn..." {...form.register("message")} /></Field>
           <Button className="mt-2 w-full" size="lg" disabled={mutation.isPending}>{mutation.isPending ? <><LoaderCircle className="size-5 animate-spin" />Đang gửi...</> : <>Gửi yêu cầu <Send className="size-5" /></>}</Button>
           {mutation.isSuccess && <p role="status" className="mt-4 rounded-xl bg-emerald-50 p-4 text-sm font-semibold text-emerald-800">Yêu cầu đã được gửi. Chúng tôi sẽ liên hệ với bạn sớm nhất.</p>}
-          {mutation.isError && <p role="alert" className="mt-4 rounded-xl bg-amber-50 p-4 text-sm text-amber-900">Không thể kết nối backend. Vui lòng gọi 0912 345 678 hoặc thử lại sau.</p>}
+          {mutation.isError && <p role="alert" className="mt-4 rounded-xl bg-amber-50 p-4 text-sm text-amber-900">Không thể kết nối hệ thống. Vui lòng gọi 096 5243 386 hoặc thử lại sau.</p>}
         </form>
         <Dialog.Close className="absolute right-4 top-4 grid size-11 place-items-center rounded-full bg-slate-100 text-slate-700 transition hover:bg-orange-100 hover:text-orange-700" aria-label="Đóng"><X className="size-5" /></Dialog.Close>
       </Dialog.Content>

@@ -12,7 +12,7 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 }
 
 export const api = {
-  products: () => request<ApiList<Product>>("/products?featured=true"),
+  products: () => request<ApiList<Product>>("/products?limit=100"),
   projects: () => request<ApiList<Project>>("/projects?featured=true"),
   services: () => request<ApiList<Service>>("/services"),
   createLead: (payload: unknown) => request<{ success: boolean; message: string }>("/leads", {

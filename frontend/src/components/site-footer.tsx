@@ -1,18 +1,23 @@
-import { ArrowUpRight, Mail, MapPin, Phone } from "lucide-react"
+import { ChevronRight, Mail, MapPin, Phone } from "lucide-react"
 import { Link } from "react-router-dom"
 
-const logoUrl = import.meta.env.VITE_CLOUDINARY_LOGO_URL || "https://res.cloudinary.com/dgbounqav/image/upload/f_auto,q_auto/logo_dk_uhmnyn"
+const serviceLinks = [
+  ["Cắt Fiber Laser CNC", "cat-fiber-laser-cnc"],
+  ["Chấn gấp kim loại CNC", "chan-gap-kim-loai-cnc"],
+  ["Gia công cơ khí chính xác", "gia-cong-co-khi-chinh-xac"],
+  ["Thiết kế & chế tạo Jig", "thiet-ke-che-tao-jig"],
+]
+const supportItems = ["Chính sách bảo mật", "Chính sách giao hàng", "Hình thức thanh toán", "Cam kết chất lượng"]
 
 export function SiteFooter() {
-  return <footer className="bg-emerald-950 text-white">
-    <div className="container-page grid gap-12 py-16 md:grid-cols-[1.4fr_1fr_1fr]">
-      <div>
-        <Link to="/" className="inline-flex rounded-xl bg-white p-2" aria-label="Công ty Đăng Khoa - Trang chủ"><img className="h-20 w-auto object-contain" src={logoUrl} alt="Logo Công ty Đăng Khoa"/></Link>
-        <p className="mt-5 max-w-md text-base leading-7 text-emerald-50/65">Đối tác giải pháp tư vấn, chế tạo và thi công cơ khí công nghiệp toàn diện.</p>
-      </div>
-      <div><h3 className="text-sm font-bold uppercase tracking-widest text-orange-400">Khám phá</h3><div className="mt-5 grid gap-3 text-emerald-50/70"><Link to="/gioi-thieu">Về chúng tôi</Link><Link to="/dich-vu">Dịch vụ</Link><Link to="/du-an">Dự án tiêu biểu</Link><Link to="/san-pham">Thiết bị & vật tư</Link></div></div>
-      <div><h3 className="text-sm font-bold uppercase tracking-widest text-orange-400">Liên hệ</h3><div className="mt-5 grid gap-4 text-sm text-emerald-50/75"><a className="flex gap-3" href="tel:0965243386"><Phone className="size-5 text-orange-400" />096 5243 386</a><a className="flex gap-3" href="mailto:namkz107@gmail.com"><Mail className="size-5 text-orange-400" />namkz107@gmail.com</a><p className="flex gap-3"><MapPin className="size-5 shrink-0 text-orange-400" />Hà Nội, Việt Nam</p></div></div>
+  return <footer className="relative overflow-hidden bg-[#101312] text-white">
+    <div className="pointer-events-none absolute inset-0 opacity-[.045] [background-image:linear-gradient(45deg,transparent_40%,white_40%,white_41%,transparent_41%),linear-gradient(-45deg,transparent_40%,white_40%,white_41%,transparent_41%)] [background-size:90px_90px]" />
+    <div className="container-page relative grid gap-x-12 gap-y-12 py-16 sm:grid-cols-2 lg:grid-cols-[1.3fr_1fr_1fr_1.2fr] lg:py-20">
+      <section><h2 className="footer-title">Về cơ khí Đăng Khoa</h2><p className="mt-8 font-display text-base font-bold uppercase tracking-wide text-slate-300">CTY CPTV ĐẦU TƯ XD TM ĐĂNG KHOA</p><address className="mt-5 not-italic text-[15px] leading-8 text-slate-400"><strong className="font-semibold text-slate-300">Trụ sở & nhà xưởng:</strong><br/>Cụm 3, thôn Duyên Trường,<br/>Xã Duyên Thái (Hồng Vân cũ),<br/>Huyện Thường Tín, Thành phố Hà Nội, Việt Nam.</address></section>
+      <section><h2 className="footer-title">Dịch vụ nổi bật</h2><ul className="mt-7 space-y-4">{serviceLinks.map(([item,slug]) => <li key={item}><Link className="footer-link" to={`/dich-vu#${slug}`}><ChevronRight className="size-4 shrink-0 text-orange-500"/>{item}</Link></li>)}</ul></section>
+      <section><h2 className="footer-title">Hỗ trợ khách hàng</h2><ul className="mt-7 space-y-4">{supportItems.map(item => <li className="footer-link" key={item}><ChevronRight className="size-4 shrink-0 text-orange-500"/>{item}</li>)}</ul></section>
+      <section><h2 className="footer-title">Liên hệ</h2><div className="mt-7 space-y-5 text-[15px] leading-7 text-slate-400"><a className="footer-contact" href="tel:0965243386"><Phone className="size-5 shrink-0 text-orange-500"/><span><strong>Hotline</strong><br/>096 5243 386</span></a><a className="footer-contact" href="mailto:namkz107@gmail.com"><Mail className="size-5 shrink-0 text-orange-500"/><span><strong>Email</strong><br/>namkz107@gmail.com</span></a><div className="footer-contact"><MapPin className="size-5 shrink-0 text-orange-500"/><span><strong>Khu vực phục vụ</strong><br/>Hà Nội và các tỉnh miền Bắc</span></div></div></section>
     </div>
-    <div className="border-t border-white/10"><div className="container-page flex flex-col gap-3 py-5 text-xs text-emerald-50/45 sm:flex-row sm:justify-between"><span>© 2026 DK Industry. All rights reserved.</span><a className="flex items-center gap-1" href="/admin">Quản trị hệ thống <ArrowUpRight className="size-3" /></a></div></div>
+    <div className="relative border-t border-white/10"><div className="container-page flex flex-col gap-2 py-5 text-xs text-slate-500 sm:flex-row sm:items-center sm:justify-between"><span>© 2026 DK Industry. Bảo lưu mọi quyền.</span><span>Thiết kế cho ngành công nghiệp Việt Nam.</span></div></div>
   </footer>
 }
