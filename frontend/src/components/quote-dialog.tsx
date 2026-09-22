@@ -31,7 +31,7 @@ export function QuoteDialog({ open, onOpenChange, product }: { open: boolean; on
         <div className="hidden bg-emerald-950 p-10 text-white lg:block">
           <p className="mb-5 text-xs font-bold uppercase tracking-[.2em] text-orange-400">Yêu cầu tư vấn</p>
           <Dialog.Title className="font-display text-4xl font-semibold leading-tight">Cho chúng tôi biết bài toán của bạn.</Dialog.Title>
-          <Dialog.Description className="mt-5 text-base leading-7 text-emerald-50/70">Kỹ sư DK Industry sẽ phân tích yêu cầu và phản hồi trong vòng 2 giờ làm việc.</Dialog.Description>
+          <Dialog.Description className="mt-5 text-base leading-7 text-emerald-50/70">Kỹ sư Cơ khí Đăng Khoa sẽ phân tích yêu cầu và phản hồi trong vòng 2 giờ làm việc.</Dialog.Description>
           <ul className="mt-9 space-y-4 text-sm font-semibold">{["Tư vấn hoàn toàn miễn phí", "Bảo mật thông tin dự án", "Giải pháp đúng nhu cầu"].map(item => <li className="flex items-center gap-3" key={item}><CheckCircle2 className="size-5 text-orange-400" />{item}</li>)}</ul>
         </div>
         <form className="p-6 sm:p-10" onSubmit={submit} noValidate>
