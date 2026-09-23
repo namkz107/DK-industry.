@@ -17,6 +17,7 @@ const RefreshSession = require('../src/models/RefreshSession');
 const RequestMessage = require('../src/models/RequestMessage');
 const ServiceRequest = require('../src/models/ServiceRequest');
 const User = require('../src/models/User');
+const { uniqueToken, uniqueVietnamesePhone } = require('../test-utils/uniqueTestData');
 
 const runIntegration = process.env.RUN_CUSTOMER_INTEGRATION === '1';
 
@@ -26,7 +27,8 @@ test('Customer quản lý hồ sơ, giỏ hàng, đơn hàng và yêu cầu riê
   await new Promise(resolve => server.once('listening', resolve));
   const address = server.address();
   const baseUrl = `http://127.0.0.1:${address.port}/api`;
-  const suffix = String(Date.now()).slice(-8);
+  const ownerPhone = uniqueVietnamesePhone('096');
+  const otherPhone = uniqueVietnamesePhone('095');
   const users = [];
   let product;
 
@@ -35,7 +37,7 @@ test('Customer quản lý hồ sơ, giỏ hàng, đơn hàng và yêu cầu riê
     headers: { ...(options.body instanceof FormData ? {} : { 'Content-Type': 'application/json' }), ...(token ? { Authorization: `Bearer ${token}` } : {}), ...options.headers }
   });
   const register = async (prefix, phone) => {
-    const response = await request('/auth/register', '', { method: 'POST', body: JSON.stringify({ name: `Khách ${prefix}`, email: `customer-${prefix}-${Date.now()}@example.com`, phone, password: 'StrongPass123' }) });
+    const response = await request('/auth/register', '', { method: 'POST', body: JSON.stringify({ name: `Khách ${prefix}`, email: `${uniqueToken(`customer-${prefix}`)}@example.com`, phone, password: 'StrongPass123' }) });
     const body = await response.json();
     assert.equal(response.status, 201);
     users.push(body.data.user.id);
@@ -43,14 +45,15 @@ test('Customer quản lý hồ sơ, giỏ hàng, đơn hàng và yêu cầu riê
   };
 
   try {
-    const customer = await register('owner', `09${suffix}`);
-    const other = await register('other', `08${suffix}`);
-    product = await Product.create({ name: 'Sản phẩm kiểm thử Customer', slug: `customer-test-${Date.now()}`, sku: `CT-${Date.now()}`, category: 'Kiểm thử', price: 125000, unit: 'chiếc', stock: 20, active: true, image: 'https://example.com/test.jpg' });
+    const customer = await register('owner', ownerPhone);
+    const other = await register('other', otherPhone);
+    const productToken = uniqueToken('customer-product');
+    product = await Product.create({ name: 'Sản phẩm kiểm thử Customer', slug: productToken, sku: productToken, category: 'Kiểm thử', price: 125000, unit: 'chiếc', stock: 20, active: true, image: 'https://example.com/test.jpg' });
 
-    const profile = await request('/customer/profile', customer.accessToken, { method: 'PATCH', body: JSON.stringify({ name: 'Khách hàng kiểm thử', phone: `09${suffix}`, company: 'Công ty Kiểm thử', taxCode: '0101234567' }) });
+    const profile = await request('/customer/profile', customer.accessToken, { method: 'PATCH', body: JSON.stringify({ name: 'Khách hàng kiểm thử', phone: ownerPhone, company: 'Công ty Kiểm thử', taxCode: '0101234567' }) });
     assert.equal(profile.status, 200);
 
-    const addressResponse = await request('/customer/addresses', customer.accessToken, { method: 'POST', body: JSON.stringify({ label: 'Nhà máy', recipientName: 'Nguyễn Kiểm Thử', phone: `09${suffix}`, addressLine: 'Cụm 3, thôn Duyên Trường', ward: 'Duyên Thái', district: 'Thường Tín', province: 'Hà Nội', isDefault: true }) });
+    const addressResponse = await request('/customer/addresses', customer.accessToken, { method: 'POST', body: JSON.stringify({ label: 'Nhà máy', recipientName: 'Nguyễn Kiểm Thử', phone: ownerPhone, addressLine: 'Cụm 3, thôn Duyên Trường', ward: 'Duyên Thái', district: 'Thường Tín', province: 'Hà Nội', isDefault: true }) });
     const addressBody = await addressResponse.json();
     assert.equal(addressResponse.status, 201);
     const addressId = addressBody.data[0]._id;

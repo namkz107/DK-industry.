@@ -10,6 +10,7 @@ process.env.JWT_SECRET ||= 'local_integration_secret_longer_than_32_characters';
 const app = require('../src/app');
 const User = require('../src/models/User');
 const RefreshSession = require('../src/models/RefreshSession');
+const { uniqueToken, uniqueVietnamesePhone } = require('../test-utils/uniqueTestData');
 
 const runIntegration = process.env.RUN_AUTH_INTEGRATION === '1';
 
@@ -19,9 +20,8 @@ test('luồng register → me → refresh → RBAC → logout', { skip: !runInte
   await new Promise(resolve => server.once('listening', resolve));
   const address = server.address();
   const baseUrl = `http://127.0.0.1:${address.port}/api`;
-  const suffix = String(Date.now()).slice(-8);
-  const email = `auth-test-${Date.now()}@example.com`;
-  const phone = `09${suffix}`;
+  const email = `${uniqueToken('auth')}@example.com`;
+  const phone = uniqueVietnamesePhone('097');
   let userId;
 
   try {
