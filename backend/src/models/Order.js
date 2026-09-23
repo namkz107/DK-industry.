@@ -28,13 +28,19 @@ const orderSchema = new mongoose.Schema({
   paymentStatus: { type: String, enum: ['unpaid', 'pending', 'paid', 'refunded'], default: 'unpaid', index: true },
   status: { type: String, enum: ['pending', 'confirmed', 'preparing', 'shipping', 'delivered', 'cancelled'], default: 'pending', index: true },
   customerNote: { type: String, trim: true, maxlength: 1000 },
+  assignedTo: { type: mongoose.Schema.Types.ObjectId, ref: 'User', index: true },
+  internalNote: { type: String, trim: true, maxlength: 3000, select: false },
+  stockCommittedAt: Date,
   timeline: [{
     status: { type: String, required: true },
     message: String,
+    actor: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    actorType: { type: String, enum: ['customer', 'staff', 'system'], default: 'system' },
     at: { type: Date, default: Date.now }
   }]
 }, { timestamps: true });
 
 orderSchema.index({ customer: 1, createdAt: -1 });
+orderSchema.index({ status: 1, assignedTo: 1, createdAt: -1 });
 
 module.exports = mongoose.model('Order', orderSchema);

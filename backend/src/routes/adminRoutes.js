@@ -17,11 +17,11 @@ router.get('/dashboard', async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
-router.get('/leads', async (req, res, next) => {
+router.get('/leads', requireRole('admin'), async (req, res, next) => {
   try { res.json({ success: true, data: await Lead.find().sort({ createdAt: -1 }).limit(100) }); } catch (error) { next(error); }
 });
 
-router.patch('/leads/:id', async (req, res, next) => {
+router.patch('/leads/:id', requireRole('admin'), async (req, res, next) => {
   try {
     const allowed = ['status', 'notes'];
     const update = Object.fromEntries(Object.entries(req.body).filter(([key]) => allowed.includes(key)));

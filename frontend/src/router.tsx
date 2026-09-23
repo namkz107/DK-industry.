@@ -2,6 +2,7 @@ import { createBrowserRouter } from "react-router-dom"
 import { AppLayout } from "@/components/app-layout"
 import { RequireAuth } from "@/components/require-auth"
 import { RequireCustomer } from "@/components/require-customer"
+import { RequireStaff } from "@/components/require-staff"
 
 export const router = createBrowserRouter([{ element: <AppLayout />, children: [
   { path: "/", lazy: async () => { const module = await import("@/pages/home-page"); return { Component: module.HomePage } } },
@@ -18,6 +19,12 @@ export const router = createBrowserRouter([{ element: <AppLayout />, children: [
       { path: "/gio-hang", lazy: async () => { const module = await import("@/pages/cart-page"); return { Component: module.CartPage } } },
       { path: "/tai-khoan/don-hang", lazy: async () => { const module = await import("@/pages/orders-page"); return { Component: module.OrdersPage } } },
       { path: "/tai-khoan/yeu-cau", lazy: async () => { const module = await import("@/pages/requests-page"); return { Component: module.RequestsPage } } },
+    ] },
+    { element: <RequireStaff />, children: [
+      { path: "/staff", lazy: async () => { const module = await import("@/pages/staff-dashboard-page"); return { Component: module.StaffDashboardPage } } },
+      { path: "/staff/leads", lazy: async () => { const module = await import("@/pages/staff-leads-page"); return { Component: module.StaffLeadsPage } } },
+      { path: "/staff/requests", lazy: async () => { const module = await import("@/pages/staff-requests-page"); return { Component: module.StaffRequestsPage } } },
+      { path: "/staff/orders", lazy: async () => { const module = await import("@/pages/staff-orders-page"); return { Component: module.StaffOrdersPage } } },
     ] },
   ] },
   { path: "*", lazy: async () => { const module = await import("@/pages/not-found-page"); return { Component: module.NotFoundPage } } },

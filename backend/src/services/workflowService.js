@@ -15,6 +15,14 @@ const requestTransitions = {
   accepted: [], rejected: ['reviewing'], cancelled: []
 };
 
+const orderTransitions = {
+  pending: ['confirmed', 'cancelled'],
+  confirmed: ['preparing', 'cancelled'],
+  preparing: ['shipping', 'cancelled'],
+  shipping: ['delivered'],
+  delivered: [], cancelled: []
+};
+
 function assertTransition(map, current, next, label) {
   if (current === next) return;
   if (!map[current]?.includes(next)) throw Object.assign(new Error(`Không thể chuyển ${label} từ ${current} sang ${next}`), { status: 409, code: 'INVALID_STATUS_TRANSITION' });
@@ -38,4 +46,11 @@ function transitionServiceRequest(request, nextStatus, { actor, actorType = 'sys
   return request;
 }
 
-module.exports = { leadTransitions, requestTransitions, transitionLead, transitionServiceRequest };
+function transitionOrder(order, nextStatus, { actor, actorType = 'staff', message = '' } = {}) {
+  assertTransition(orderTransitions, order.status, nextStatus, 'Order');
+  order.status = nextStatus;
+  order.timeline.push({ status: nextStatus, message, actorType, actor });
+  return order;
+}
+
+module.exports = { leadTransitions, requestTransitions, orderTransitions, transitionLead, transitionServiceRequest, transitionOrder };

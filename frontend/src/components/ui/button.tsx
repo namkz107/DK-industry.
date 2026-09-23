@@ -10,7 +10,7 @@ const buttonVariants = cva(
     dark: "bg-emerald-950 text-white hover:bg-emerald-900",
     outline: "border border-slate-300 bg-white text-slate-900 hover:border-orange-500 hover:text-orange-700",
     ghost: "text-slate-700 hover:bg-slate-100",
-  }, size: { default: "h-12", lg: "min-h-14 px-7 text-base", icon: "size-12 p-0" } }, defaultVariants: { variant: "default", size: "default" } }
+  }, size: { default: "h-12", sm: "min-h-11 px-4 text-sm", lg: "min-h-14 px-7 text-base", icon: "size-12 p-0" } }, defaultVariants: { variant: "default", size: "default" } }
 )
 
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement>, VariantProps<typeof buttonVariants> { asChild?: boolean }

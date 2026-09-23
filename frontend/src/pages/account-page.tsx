@@ -18,7 +18,7 @@ export function AccountPage() {
   if (!user) return null
   const handleLogout = async () => { try { await logout() } finally { navigate("/", { replace: true }) } }
 
-  if (user.role !== "customer") return <section className="section-space bg-stone-100"><div className="container-page max-w-4xl"><div className="mb-7 flex items-end justify-between gap-4"><div><p className="text-xs font-black uppercase tracking-[.2em] text-orange-700">Tài khoản nội bộ</p><h1 className="mt-2 font-display text-4xl font-bold text-emerald-950">Xin chào, {user.name}</h1></div><Button variant="outline" onClick={handleLogout}><LogOut className="size-5"/>Đăng xuất</Button></div><div className="grid gap-6 md:grid-cols-2"><ProfileCard/><PasswordCard/></div></div></section>
+  if (user.role !== "customer") return <section className="section-space bg-stone-100"><div className="container-page max-w-4xl"><div className="mb-7 flex flex-wrap items-end justify-between gap-4"><div><p className="text-xs font-black uppercase tracking-[.2em] text-orange-700">Tài khoản nội bộ</p><h1 className="mt-2 font-display text-4xl font-bold text-emerald-950">Xin chào, {user.name}</h1></div><div className="flex gap-2"><Button asChild><Link to="/staff">Vào khu vực làm việc</Link></Button><Button variant="outline" onClick={handleLogout}><LogOut className="size-5"/>Đăng xuất</Button></div></div><div className="grid gap-6 md:grid-cols-2"><ProfileCard/><PasswordCard/></div></div></section>
 
   const data = summary.data?.data
   const cards = [

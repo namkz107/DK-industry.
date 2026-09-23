@@ -90,11 +90,19 @@ Nếu chưa bật MongoDB/backend, frontend vẫn sử dụng dữ liệu mẫu 
 | POST | `/api/leads` | Gửi yêu cầu tư vấn / báo giá |
 | GET | `/api/admin/dashboard` | Thống kê CRM mini |
 | GET/PATCH | `/api/admin/leads` | Danh sách/cập nhật trạng thái lead |
+| GET | `/api/staff/dashboard` | Công việc tổng quan của Staff |
+| GET/PATCH | `/api/staff/leads/:id` | Tiếp nhận và xử lý Lead có audit trail |
+| GET/PATCH | `/api/staff/requests/:id` | Xử lý yêu cầu kỹ thuật và phân công |
+| POST | `/api/staff/requests/:id/messages` | Trao đổi với khách hoặc ghi chú nội bộ |
+| POST | `/api/staff/requests/:id/quotations` | Lưu nháp hoặc phát hành báo giá có phiên bản |
+| GET/PATCH | `/api/staff/orders/:id` | Xác nhận tồn kho, thanh toán và giao hàng |
 | POST/PATCH/DELETE | `/api/admin/products/:id` | Quản trị sản phẩm |
 | POST/PATCH/DELETE | `/api/admin/projects/:id` | Quản trị dự án |
 
-Các route `/api/admin/*` yêu cầu `Authorization: Bearer <access-token>`. Staff chỉ xử lý dashboard và lead; các thao tác quản trị nội dung tiếp tục yêu cầu role Admin. Trước khi production cần thay toàn bộ thông tin liên hệ, hình ảnh demo và cấu hình email/Zalo/thanh toán thực tế.
+Các route `/api/staff/*` dành cho Staff/Admin xử lý nghiệp vụ. Route quản trị nội dung `/api/admin/products|projects|services` tiếp tục yêu cầu role Admin. Trước khi production cần thay toàn bộ thông tin liên hệ, hình ảnh demo và cấu hình email/Zalo/thanh toán thực tế.
 
 Quy chuẩn kiểm duyệt nội dung và phòng tránh SEO spam nằm tại [`docs/CONTENT-SECURITY.md`](docs/CONTENT-SECURITY.md).
 Kiến trúc, luồng sử dụng và checklist production của Authentication nằm tại [`docs/AUTHENTICATION.md`](docs/AUTHENTICATION.md).
 Nghiệp vụ Customer, trạng thái và kịch bản kiểm tra nằm tại [`docs/CUSTOMER.md`](docs/CUSTOMER.md).
+Luồng Lead và Service Request nằm tại [`docs/LEAD-SERVICE-REQUEST.md`](docs/LEAD-SERVICE-REQUEST.md).
+Quyền hạn, workflow và kịch bản kiểm tra Staff nằm tại [`docs/STAFF.md`](docs/STAFF.md).
