@@ -57,7 +57,7 @@ test('luồng register → me → refresh → RBAC → logout', { skip: !runInte
     cookie = staffRefresh.headers.get('set-cookie').split(';')[0];
 
     const staffDashboard = await fetch(`${baseUrl}/admin/dashboard`, { headers: { Authorization: `Bearer ${staffBody.data.accessToken}` } });
-    assert.equal(staffDashboard.status, 200);
+    assert.equal(staffDashboard.status, 403);
     const staffCannotCreateContent = await fetch(`${baseUrl}/admin/products`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${staffBody.data.accessToken}` },

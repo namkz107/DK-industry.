@@ -30,7 +30,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/customer', authenticate, requireRole('customer'), customerRoutes);
 app.use('/api/staff', authenticate, requireRole('staff', 'admin'), staffRoutes);
 app.use('/api', publicRoutes);
-app.use('/api/admin', authenticate, requireRole('staff', 'admin'), adminRoutes);
+app.use('/api/admin', authenticate, requireRole('admin'), adminRoutes);
 app.use(notFound);
 app.use(errorHandler);
 
