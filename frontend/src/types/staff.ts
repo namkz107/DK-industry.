@@ -1,6 +1,8 @@
 export type Priority = "low" | "normal" | "high" | "urgent"
 export type LeadStatus = "new" | "qualified" | "contacted" | "needs_analysis" | "quoted" | "won" | "lost" | "spam"
 export type RequestStatus = "submitted" | "reviewing" | "need_more_info" | "quoted" | "accepted" | "rejected" | "cancelled"
+export type OrderStatus = "pending" | "confirmed" | "preparing" | "shipping" | "delivered" | "cancelled"
+export type PaymentStatus = "unpaid" | "pending" | "paid" | "refund_pending" | "refunded"
 
 export interface StaffMember { _id: string; name: string; email: string; role: "staff" | "admin" }
 export interface StaffDashboard { newLeads: number; myLeads: number; openRequests: number; myRequests: number; unreadCustomers: number; urgent: number; pendingOrders: number; myOrders: number }
@@ -21,9 +23,12 @@ export interface StaffQuotation { _id: string; code: string; version: number; st
 export interface StaffRequestDetail { request: StaffRequest; messages: StaffMessage[]; quotations: StaffQuotation[] }
 export interface Paged<T> { items: T[]; total: number; page: number; pages: number }
 export interface StaffOrder {
-  _id: string; code: string; status: "pending" | "confirmed" | "preparing" | "shipping" | "delivered" | "cancelled"; paymentStatus: "unpaid" | "pending" | "paid" | "refunded"; paymentMethod: string
+  _id: string; code: string; status: OrderStatus; paymentStatus: PaymentStatus; paymentMethod: "cod" | "bank_transfer"
   customer: { _id: string; name: string; email: string; phone?: string; company?: string }; assignedTo?: StaffMember | null; internalNote?: string; customerNote?: string
   items: Array<{ _id: string; name: string; sku?: string; unit?: string; price: number; quantity: number; lineTotal: number }>; subtotal: number; shippingFee: number; total: number
   shippingAddress: { recipientName: string; phone: string; addressLine: string; ward?: string; district: string; province: string }
   timeline: Array<{ _id: string; status: string; message?: string; at: string; actor?: StaffMember }>; createdAt: string
+  paymentTimeline: Array<{ _id: string; status: PaymentStatus; message?: string; at: string; actor?: StaffMember }>
+  shippingProvider?: string; trackingCode?: string; estimatedDeliveryAt?: string; cancellationReason?: string
+  confirmedAt?: string; preparingAt?: string; shippedAt?: string; deliveredAt?: string; cancelledAt?: string; paidAt?: string; refundedAt?: string
 }

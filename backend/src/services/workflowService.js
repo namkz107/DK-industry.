@@ -23,6 +23,14 @@ const orderTransitions = {
   delivered: [], cancelled: []
 };
 
+const paymentTransitions = {
+  unpaid: ['pending', 'paid'],
+  pending: ['unpaid', 'paid'],
+  paid: ['refund_pending'],
+  refund_pending: ['refunded'],
+  refunded: []
+};
+
 function assertTransition(map, current, next, label) {
   if (current === next) return;
   if (!map[current]?.includes(next)) throw Object.assign(new Error(`Không thể chuyển ${label} từ ${current} sang ${next}`), { status: 409, code: 'INVALID_STATUS_TRANSITION' });
@@ -50,7 +58,18 @@ function transitionOrder(order, nextStatus, { actor, actorType = 'staff', messag
   assertTransition(orderTransitions, order.status, nextStatus, 'Order');
   order.status = nextStatus;
   order.timeline.push({ status: nextStatus, message, actorType, actor });
+  const timestampFields = { confirmed: 'confirmedAt', preparing: 'preparingAt', shipping: 'shippedAt', delivered: 'deliveredAt', cancelled: 'cancelledAt' };
+  if (timestampFields[nextStatus]) order[timestampFields[nextStatus]] = new Date();
   return order;
 }
 
-module.exports = { leadTransitions, requestTransitions, orderTransitions, transitionLead, transitionServiceRequest, transitionOrder };
+function transitionPayment(order, nextStatus, { actor, message = '' } = {}) {
+  assertTransition(paymentTransitions, order.paymentStatus, nextStatus, 'Payment');
+  order.paymentStatus = nextStatus;
+  order.paymentTimeline.push({ status: nextStatus, message, actor });
+  if (nextStatus === 'paid') order.paidAt = new Date();
+  if (nextStatus === 'refunded') order.refundedAt = new Date();
+  return order;
+}
+
+module.exports = { leadTransitions, requestTransitions, orderTransitions, paymentTransitions, transitionLead, transitionServiceRequest, transitionOrder, transitionPayment };

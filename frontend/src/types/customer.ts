@@ -26,10 +26,13 @@ export interface Cart { id?: string; items: CartItem[]; itemCount: number; subto
 
 export interface OrderItem { product: string; name: string; sku?: string; image?: string; unit?: string; price: number; quantity: number; lineTotal: number }
 export interface TimelineItem { status: string; message?: string; at: string }
+export type PaymentStatus = "unpaid" | "pending" | "paid" | "refund_pending" | "refunded"
 export interface CustomerOrder {
   _id: string; code: string; items: OrderItem[]; subtotal: number; shippingFee: number; total: number
-  paymentMethod: "cod" | "bank_transfer"; paymentStatus: string; status: string; customerNote?: string
+  paymentMethod: "cod" | "bank_transfer"; paymentStatus: PaymentStatus; status: string; customerNote?: string
   shippingAddress: Omit<Address, "_id" | "label" | "isDefault">; timeline: TimelineItem[]; createdAt: string
+  paymentTimeline?: Array<{ status: PaymentStatus; message?: string; at: string }>
+  shippingProvider?: string; trackingCode?: string; estimatedDeliveryAt?: string; cancellationReason?: string
 }
 
 export interface RequestAttachment { _id: string; originalName: string; mimeType?: string; size?: number }

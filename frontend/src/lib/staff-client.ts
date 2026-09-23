@@ -22,5 +22,5 @@ export const staffClient = {
   downloadMessageAttachment: (requestId: string, messageId: string, attachmentId: string) => authClient.download(`/staff/requests/${requestId}/messages/${messageId}/attachments/${attachmentId}`),
   orders: (filters: { q?: string; status?: string; paymentStatus?: string; assigned?: string } = {}) => authClient.authenticated<Result<Paged<StaffOrder>>>(`/staff/orders?${query(filters)}`),
   order: (id: string) => authClient.authenticated<Result<StaffOrder>>(`/staff/orders/${id}`),
-  updateOrder: (id: string, body: { status?: StaffOrder["status"]; paymentStatus?: StaffOrder["paymentStatus"]; assignedTo?: string; internalNote?: string; message?: string }) => authClient.authenticated<Result<StaffOrder>>(`/staff/orders/${id}`, json("PATCH", body)),
+  updateOrder: (id: string, body: { status?: StaffOrder["status"]; paymentStatus?: StaffOrder["paymentStatus"]; assignedTo?: string; internalNote?: string; message?: string; paymentMessage?: string; shippingFee?: number; shippingProvider?: string; trackingCode?: string; estimatedDeliveryAt?: string }) => authClient.authenticated<Result<StaffOrder>>(`/staff/orders/${id}`, json("PATCH", body)),
 }

@@ -30,6 +30,7 @@ test('Staff xử lý Lead, Service Request, trao đổi và báo giá đúng quy
   let serviceRequest;
   let product;
   let order;
+  let deliveryOrder;
 
   const call = (url, token, options = {}) => fetch(`${baseUrl}${url}`, {
     ...options,
@@ -102,6 +103,30 @@ test('Staff xử lý Lead, Service Request, trao đổi và báo giá đúng quy
     const cancelOrder = await call(`/staff/orders/${order._id}`, staffToken, { method: 'PATCH', body: JSON.stringify({ status: 'cancelled', message: 'Dừng theo xác nhận nội bộ.' }) });
     assert.equal(cancelOrder.status, 200);
     assert.equal((await Product.findById(product._id)).stock, 5);
+    assert.equal((await Order.findById(order._id)).paymentStatus, 'refund_pending');
+
+    deliveryOrder = await Order.create({
+      code: `DH-DELIVERY-${suffix}`, customer: customer._id, paymentMethod: 'bank_transfer',
+      items: [{ product: product._id, name: product.name, sku: product.sku, unit: product.unit, price: product.price, quantity: 1, lineTotal: 250000 }],
+      shippingAddress: { recipientName: customer.name, phone: customer.phone, addressLine: 'Cụm 3, Duyên Trường', district: 'Thường Tín', province: 'Hà Nội' },
+      subtotal: 250000, total: 250000, timeline: [{ status: 'pending', message: 'Đơn giao thử nghiệm.' }]
+    });
+    const concurrentConfirmations = await Promise.all([
+      call(`/staff/orders/${deliveryOrder._id}`, staffToken, { method: 'PATCH', body: JSON.stringify({ status: 'confirmed', shippingFee: 30000, message: 'Đã giữ hàng.' }) }),
+      call(`/staff/orders/${deliveryOrder._id}`, staffToken, { method: 'PATCH', body: JSON.stringify({ status: 'confirmed', shippingFee: 30000, message: 'Đã giữ hàng.' }) })
+    ]);
+    assert.ok(concurrentConfirmations.some(response => response.status === 200));
+    assert.ok(concurrentConfirmations.every(response => [200, 409].includes(response.status)));
+    assert.equal((await Product.findById(product._id)).stock, 4);
+    assert.equal((await call(`/staff/orders/${deliveryOrder._id}`, staffToken, { method: 'PATCH', body: JSON.stringify({ status: 'preparing', message: 'Đang đóng gói.' }) })).status, 200);
+    const unpaidShipping = await call(`/staff/orders/${deliveryOrder._id}`, staffToken, { method: 'PATCH', body: JSON.stringify({ status: 'shipping', shippingProvider: 'Xe công ty', message: 'Bắt đầu giao.' }) });
+    assert.equal(unpaidShipping.status, 400);
+    const shipping = await call(`/staff/orders/${deliveryOrder._id}`, staffToken, { method: 'PATCH', body: JSON.stringify({ status: 'shipping', paymentStatus: 'paid', shippingProvider: 'Xe công ty', trackingCode: 'DK-TEST', message: 'Đã bàn giao vận chuyển.' }) });
+    assert.equal(shipping.status, 200);
+    assert.equal((await shipping.json()).data.total, 280000);
+    const delivered = await call(`/staff/orders/${deliveryOrder._id}`, staffToken, { method: 'PATCH', body: JSON.stringify({ status: 'delivered', message: 'Khách đã nhận đủ hàng.' }) });
+    assert.equal(delivered.status, 200);
+    assert.ok((await Order.findById(deliveryOrder._id)).deliveredAt);
   } finally {
     if (serviceRequest) {
       await Promise.all([Quotation.deleteMany({ request: serviceRequest._id }), RequestMessage.deleteMany({ request: serviceRequest._id })]);
@@ -109,6 +134,7 @@ test('Staff xử lý Lead, Service Request, trao đổi và báo giá đúng quy
     }
     if (lead) await Lead.deleteOne({ _id: lead._id });
     if (order) await Order.deleteOne({ _id: order._id });
+    if (deliveryOrder) await Order.deleteOne({ _id: deliveryOrder._id });
     if (product) await Product.deleteOne({ _id: product._id });
     await User.deleteMany({ _id: { $in: users } });
     await new Promise((resolve, reject) => server.close(error => error ? reject(error) : resolve()));

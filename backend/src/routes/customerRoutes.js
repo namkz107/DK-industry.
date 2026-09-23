@@ -10,7 +10,7 @@ const Product = require('../models/Product');
 const Quotation = require('../models/Quotation');
 const RequestMessage = require('../models/RequestMessage');
 const ServiceRequest = require('../models/ServiceRequest');
-const { transitionServiceRequest } = require('../services/workflowService');
+const { transitionOrder, transitionServiceRequest } = require('../services/workflowService');
 
 const router = express.Router();
 const phonePattern = /^(?:\+84|0)[0-9]{9,10}$/;
@@ -226,6 +226,7 @@ router.post('/orders', async (req, res, next) => {
       shippingAddress: { recipientName: address.recipientName, phone: address.phone, addressLine: address.addressLine, ward: address.ward, district: address.district, province: address.province },
       subtotal, shippingFee: 0, total: subtotal, paymentMethod,
       customerNote: clean(req.body.customerNote),
+      paymentTimeline: [{ status: 'unpaid', message: paymentMethod === 'cod' ? 'Thanh toán khi nhận hàng.' : 'Chờ nhân viên xác nhận thông tin chuyển khoản.' }],
       timeline: [{ status: 'pending', message: 'Đơn hàng đã được tiếp nhận, đang chờ xác nhận tồn kho và vận chuyển.' }]
     });
     cart.items = [];
@@ -237,12 +238,14 @@ router.post('/orders', async (req, res, next) => {
 router.patch('/orders/:id/cancel', async (req, res, next) => {
   try {
     if (!validId(req.params.id)) fail('Đơn hàng không hợp lệ', 404);
-    const order = await Order.findOneAndUpdate(
-      { _id: req.params.id, customer: req.user._id, status: 'pending' },
-      { $set: { status: 'cancelled' }, $push: { timeline: { status: 'cancelled', message: clean(req.body.reason) || 'Khách hàng đã hủy đơn.' } } },
-      { new: true }
-    );
-    if (!order) fail('Chỉ có thể hủy đơn đang chờ xác nhận', 409);
+    const order = await Order.findOne({ _id: req.params.id, customer: req.user._id });
+    if (!order) fail('Không tìm thấy đơn hàng', 404);
+    if (order.status !== 'pending') fail('Chỉ có thể hủy đơn đang chờ xác nhận', 409);
+    const reason = clean(req.body.reason);
+    if (reason.length < 5) fail('Vui lòng nhập lý do hủy đơn rõ ràng');
+    transitionOrder(order, 'cancelled', { actor: req.user._id, actorType: 'customer', message: reason });
+    order.cancellationReason = reason;
+    await order.save();
     res.json({ success: true, message: 'Đã hủy đơn hàng', data: order });
   } catch (error) { next(error); }
 });

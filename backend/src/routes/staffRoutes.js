@@ -3,19 +3,19 @@ const express = require('express');
 const mongoose = require('mongoose');
 const Lead = require('../models/Lead');
 const Order = require('../models/Order');
-const Product = require('../models/Product');
 const Quotation = require('../models/Quotation');
 const RequestMessage = require('../models/RequestMessage');
 const ServiceRequest = require('../models/ServiceRequest');
 const User = require('../models/User');
-const { transitionLead, transitionOrder, transitionServiceRequest } = require('../services/workflowService');
+const { transitionLead, transitionOrder, transitionPayment, transitionServiceRequest } = require('../services/workflowService');
+const { commitOrderStock, releaseOrderStock } = require('../services/orderService');
 
 const router = express.Router();
 const uploadDirectory = path.join(__dirname, '..', '..', 'storage', 'customer-requests');
 const leadStatuses = new Set(['new', 'qualified', 'contacted', 'needs_analysis', 'quoted', 'won', 'lost', 'spam']);
 const requestStatuses = new Set(['submitted', 'reviewing', 'need_more_info', 'quoted', 'accepted', 'rejected', 'cancelled']);
 const orderStatuses = new Set(['pending', 'confirmed', 'preparing', 'shipping', 'delivered', 'cancelled']);
-const paymentStatuses = new Set(['unpaid', 'pending', 'paid', 'refunded']);
+const paymentStatuses = new Set(['unpaid', 'pending', 'paid', 'refund_pending', 'refunded']);
 const priorities = new Set(['low', 'normal', 'high', 'urgent']);
 const validId = value => mongoose.isValidObjectId(value);
 const clean = (value, max = 3000) => String(value || '').trim().slice(0, max);
@@ -294,7 +294,7 @@ router.get('/orders', async (req, res, next) => {
 router.get('/orders/:id', async (req, res, next) => {
   try {
     if (!validId(req.params.id)) fail('Đơn hàng không hợp lệ', 404);
-    const data = await Order.findById(req.params.id).select('+internalNote').populate('customer', 'name email phone company').populate('assignedTo', 'name email').populate('timeline.actor', 'name role').lean();
+    const data = await Order.findById(req.params.id).select('+internalNote').populate('customer', 'name email phone company').populate('assignedTo', 'name email').populate('timeline.actor', 'name role').populate('paymentTimeline.actor', 'name role').lean();
     if (!data) fail('Không tìm thấy đơn hàng', 404);
     res.json({ success: true, data });
   } catch (error) { next(error); }
@@ -305,37 +305,51 @@ router.patch('/orders/:id', async (req, res, next) => {
     if (!validId(req.params.id)) fail('Đơn hàng không hợp lệ', 404);
     const order = await Order.findById(req.params.id).select('+internalNote');
     if (!order) fail('Không tìm thấy đơn hàng', 404);
+    if (req.user.role !== 'admin' && order.assignedTo && String(order.assignedTo) !== String(req.user._id)) fail('Đơn hàng đang do nhân viên khác phụ trách', 409);
     if (req.body.assignedTo !== undefined) {
       const nextAssignee = await assignUser(req.body.assignedTo, req.user);
-      if (req.user.role !== 'admin' && order.assignedTo && String(order.assignedTo) !== String(req.user._id)) fail('Đơn hàng đang do nhân viên khác phụ trách', 409);
       order.assignedTo = nextAssignee;
     }
     if (req.body.internalNote !== undefined) order.internalNote = clean(req.body.internalNote, 3000);
+    if (req.body.shippingFee !== undefined) {
+      if (!['pending', 'confirmed', 'preparing'].includes(order.status)) fail('Chỉ cập nhật phí vận chuyển trước khi xuất giao');
+      const shippingFee = Number(req.body.shippingFee);
+      if (!Number.isFinite(shippingFee) || shippingFee < 0 || shippingFee > 100000000) fail('Phí vận chuyển không hợp lệ');
+      order.shippingFee = Math.round(shippingFee);
+      order.total = order.subtotal + order.shippingFee;
+    }
+    if (req.body.shippingProvider !== undefined) order.shippingProvider = clean(req.body.shippingProvider, 150);
+    if (req.body.trackingCode !== undefined) order.trackingCode = clean(req.body.trackingCode, 150);
+    if (req.body.estimatedDeliveryAt !== undefined) {
+      const estimate = req.body.estimatedDeliveryAt ? new Date(req.body.estimatedDeliveryAt) : null;
+      if (estimate && Number.isNaN(estimate.getTime())) fail('Ngày giao dự kiến không hợp lệ');
+      order.estimatedDeliveryAt = estimate;
+    }
     if (req.body.paymentStatus !== undefined) {
       if (!paymentStatuses.has(req.body.paymentStatus)) fail('Trạng thái thanh toán không hợp lệ');
-      order.paymentStatus = req.body.paymentStatus;
+      if (req.body.paymentStatus === 'refund_pending' && !['cancelled'].includes(req.body.status || order.status)) fail('Chỉ yêu cầu hoàn tiền cho đơn đã hủy');
+      if (req.body.paymentStatus === 'refunded' && !['cancelled'].includes(req.body.status || order.status)) fail('Chỉ xác nhận hoàn tiền cho đơn đã hủy');
+      if (req.body.paymentStatus !== order.paymentStatus) transitionPayment(order, req.body.paymentStatus, { actor: req.user._id, message: clean(req.body.paymentMessage || req.body.message, 1000) });
     }
     if (req.body.status !== undefined && req.body.status !== order.status) {
       if (!orderStatuses.has(req.body.status)) fail('Trạng thái đơn hàng không hợp lệ');
       const previousStatus = order.status;
-      if (req.body.status === 'confirmed' && !order.stockCommittedAt) {
-        const committed = [];
-        for (const item of order.items) {
-          const result = await Product.updateOne({ _id: item.product, active: true, stock: { $gte: item.quantity } }, { $inc: { stock: -item.quantity } });
-          if (!result.modifiedCount) {
-            await Promise.all(committed.map(value => Product.updateOne({ _id: value.product }, { $inc: { stock: value.quantity } })));
-            fail(`${item.name} không đủ tồn kho để xác nhận`, 409);
-          }
-          committed.push({ product: item.product, quantity: item.quantity });
-        }
-        order.stockCommittedAt = new Date();
+      const message = clean(req.body.message, 1000);
+      if (req.body.status === 'cancelled' && !message) fail('Cần nhập lý do hủy đơn');
+      if (req.body.status === 'shipping' && !order.shippingProvider) fail('Cần nhập đơn vị hoặc hình thức vận chuyển trước khi giao hàng');
+      if (req.body.status === 'shipping' && order.paymentMethod === 'bank_transfer' && order.paymentStatus !== 'paid') fail('Đơn chuyển khoản phải được xác nhận thanh toán trước khi giao');
+      transitionOrder(order, req.body.status, { actor: req.user._id, message });
+      if (req.body.status === 'confirmed') await commitOrderStock(order);
+      if (req.body.status === 'cancelled' && ['confirmed', 'preparing'].includes(previousStatus)) await releaseOrderStock(order);
+      if (req.body.status === 'cancelled') {
+        order.cancellationReason = message;
+        if (order.paymentStatus === 'paid') transitionPayment(order, 'refund_pending', { actor: req.user._id, message: 'Đơn đã hủy và đang chờ hoàn tiền cho khách.' });
       }
-      if (req.body.status === 'cancelled' && order.stockCommittedAt && ['confirmed', 'preparing'].includes(previousStatus)) {
-        await Promise.all(order.items.map(item => Product.updateOne({ _id: item.product }, { $inc: { stock: item.quantity } })));
-        order.stockCommittedAt = undefined;
+      if (req.body.status === 'delivered' && order.paymentMethod === 'cod' && ['unpaid', 'pending'].includes(order.paymentStatus)) {
+        transitionPayment(order, 'paid', { actor: req.user._id, message: 'Đã thu tiền khi giao hàng.' });
       }
-      transitionOrder(order, req.body.status, { actor: req.user._id, message: clean(req.body.message, 1000) });
     }
+    if (!order.assignedTo && req.body.status && req.body.status !== 'pending') order.assignedTo = req.user._id;
     await order.save();
     res.json({ success: true, message: 'Đã cập nhật đơn hàng', data: order });
   } catch (error) { next(error); }
