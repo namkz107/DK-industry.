@@ -20,10 +20,11 @@ export function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [serverError, setServerError] = useState("")
   const form = useForm<LoginData>({ resolver: zodResolver(schema), defaultValues: { identifier: "", password: "" } })
-  if (ready && user) return <Navigate to={user.role === "customer" ? "/tai-khoan" : "/staff"} replace/>
+  const homeForRole = (role: "customer" | "staff" | "admin") => role === "admin" ? "/admin" : role === "staff" ? "/staff" : "/tai-khoan"
+  if (ready && user) return <Navigate to={homeForRole(user.role)} replace/>
   const submit = form.handleSubmit(async data => {
     setServerError("")
-    try { const nextUser = await login(data); navigate((location.state as { from?: string } | null)?.from || (nextUser.role === "customer" ? "/tai-khoan" : "/staff"), { replace: true }) }
+    try { const nextUser = await login(data); navigate((location.state as { from?: string } | null)?.from || homeForRole(nextUser.role), { replace: true }) }
     catch (error) { setServerError(error instanceof Error ? error.message : "Không thể đăng nhập") }
   })
 

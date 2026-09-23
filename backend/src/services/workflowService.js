@@ -37,6 +37,7 @@ function assertTransition(map, current, next, label) {
 }
 
 function transitionLead(lead, nextStatus, { actor, message = '', action = 'status_changed' } = {}) {
+  if (lead.status === nextStatus) return lead;
   assertTransition(leadTransitions, lead.status, nextStatus, 'Lead');
   const fromStatus = lead.status;
   lead.status = nextStatus;
@@ -46,6 +47,7 @@ function transitionLead(lead, nextStatus, { actor, message = '', action = 'statu
 }
 
 function transitionServiceRequest(request, nextStatus, { actor, actorType = 'system', message = '' } = {}) {
+  if (request.status === nextStatus) return request;
   assertTransition(requestTransitions, request.status, nextStatus, 'Service Request');
   request.status = nextStatus;
   request.timeline.push({ status: nextStatus, message, actorType, actor });
@@ -55,6 +57,7 @@ function transitionServiceRequest(request, nextStatus, { actor, actorType = 'sys
 }
 
 function transitionOrder(order, nextStatus, { actor, actorType = 'staff', message = '' } = {}) {
+  if (order.status === nextStatus) return order;
   assertTransition(orderTransitions, order.status, nextStatus, 'Order');
   order.status = nextStatus;
   order.timeline.push({ status: nextStatus, message, actorType, actor });
@@ -64,6 +67,7 @@ function transitionOrder(order, nextStatus, { actor, actorType = 'staff', messag
 }
 
 function transitionPayment(order, nextStatus, { actor, message = '' } = {}) {
+  if (order.paymentStatus === nextStatus) return order;
   assertTransition(paymentTransitions, order.paymentStatus, nextStatus, 'Payment');
   order.paymentStatus = nextStatus;
   order.paymentTimeline.push({ status: nextStatus, message, actor });

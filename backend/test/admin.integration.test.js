@@ -45,7 +45,7 @@ test('Admin quản lý nhân sự, nội dung và nhật ký đúng quyền', { 
     const createUserResponse = await call('/admin/users', adminToken, { method: 'POST', body: JSON.stringify({ name: 'Nhân viên mới', email: `${token}-new@example.com`, phone: uniqueVietnamesePhone('092'), password: 'Temporary123', role: 'staff', permissions: ['orders.manage', 'invalid.permission'] }) });
     const createUserBody = await createUserResponse.json();
     assert.equal(createUserResponse.status, 201);
-    assert.deepEqual(createUserBody.data.permissions, ['orders.manage']);
+    assert.deepEqual(createUserBody.data.permissions, []);
     createdIds.users.push(createUserBody.data._id);
 
     const blockUser = await call(`/admin/users/${createUserBody.data._id}`, adminToken, { method: 'PATCH', body: JSON.stringify({ status: 'blocked' }) });

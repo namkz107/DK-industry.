@@ -8,8 +8,8 @@ const query = (values: Record<string, string | undefined>) => new URLSearchParam
 export const adminClient = {
   dashboard: () => authClient.authenticated<Result<AdminDashboard>>("/admin/dashboard"),
   users: (filters: { q?: string; role?: string; status?: string } = {}) => authClient.authenticated<Result<AdminPaged<AdminUser>>>(`/admin/users?${query(filters)}`),
-  createUser: (body: { name: string; email: string; phone: string; password: string; role: "staff" | "admin"; permissions: string[] }) => authClient.authenticated<Result<AdminUser>>("/admin/users", json("POST", body)),
-  updateUser: (id: string, body: Partial<Pick<AdminUser, "name" | "email" | "phone" | "role" | "status" | "permissions">>) => authClient.authenticated<Result<AdminUser>>(`/admin/users/${id}`, json("PATCH", body)),
+  createUser: (body: { name: string; email: string; phone: string; password: string; role: "staff" | "admin" }) => authClient.authenticated<Result<AdminUser>>("/admin/users", json("POST", body)),
+  updateUser: (id: string, body: Partial<Pick<AdminUser, "name" | "email" | "phone" | "role" | "status">>) => authClient.authenticated<Result<AdminUser>>(`/admin/users/${id}`, json("PATCH", body)),
   resetPassword: (id: string, password: string) => authClient.authenticated<{ success: boolean; message: string }>(`/admin/users/${id}/reset-password`, json("POST", { password })),
   products: (filters: { q?: string; state?: string } = {}) => authClient.authenticated<Result<AdminPaged<AdminProduct>>>(`/admin/products?${query(filters)}`),
   createProduct: (body: Record<string, unknown>) => authClient.authenticated<Result<AdminProduct>>("/admin/products", json("POST", body)),

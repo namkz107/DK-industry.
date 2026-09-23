@@ -16,7 +16,6 @@ const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const staffRoles = new Set(['staff', 'admin']);
 const userRoles = new Set(['customer', 'staff', 'admin']);
 const userStatuses = new Set(['active', 'blocked']);
-const allowedPermissions = new Set(['leads.manage', 'requests.manage', 'orders.manage', 'content.manage', 'reports.view']);
 const validId = value => mongoose.isValidObjectId(value);
 const clean = (value, max = 5000) => String(value ?? '').trim().slice(0, max);
 const normalizePhone = value => clean(value, 20).replace(/[\s.-]/g, '');
@@ -24,7 +23,6 @@ const fail = (message, status = 400) => { throw Object.assign(new Error(message)
 const pageValues = query => ({ page: Math.max(1, Number(query.page) || 1), limit: Math.min(50, Math.max(1, Number(query.limit) || 20)) });
 const escapeRegex = value => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const slugify = value => clean(value, 200).normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-const permissions = values => Array.isArray(values) ? [...new Set(values.filter(value => allowedPermissions.has(value)))] : [];
 const publicUser = user => ({ _id: user._id, name: user.name, email: user.email, phone: user.phone || '', role: user.role, permissions: user.permissions || [], status: user.status, lastLoginAt: user.lastLoginAt, createdAt: user.createdAt });
 
 async function audit(req, action, entity, entityId, summary, metadata = {}) {
@@ -74,7 +72,7 @@ router.post('/users', async (req, res, next) => {
     const role = staffRoles.has(req.body.role) ? req.body.role : 'staff';
     if (name.length < 2 || !emailPattern.test(email) || !phonePattern.test(phone)) fail('Họ tên, email hoặc số điện thoại không hợp lệ');
     if (password.length < 8 || password.length > 128) fail('Mật khẩu tạm thời phải có từ 8 đến 128 ký tự');
-    const user = await User.create({ name, email, phone, role, permissions: permissions(req.body.permissions), passwordHash: await User.hashPassword(password), status: 'active' });
+    const user = await User.create({ name, email, phone, role, permissions: [], passwordHash: await User.hashPassword(password), status: 'active' });
     await audit(req, 'user.created', 'user', user._id, `Đã tạo tài khoản ${role}: ${user.name}`);
     res.status(201).json({ success: true, message: 'Đã tạo tài khoản nhân sự', data: publicUser(user) });
   } catch (error) { next(error); }
@@ -94,17 +92,16 @@ router.patch('/users/:id', async (req, res, next) => {
       const activeAdmins = await User.countDocuments({ role: 'admin', status: 'active' });
       if (activeAdmins <= 1) fail('Hệ thống phải luôn còn ít nhất một Admin đang hoạt động', 409);
     }
-    const before = { role: user.role, status: user.status, permissions: user.permissions || [] };
+    const before = { role: user.role, status: user.status };
     if (req.body.name !== undefined) { const name = clean(req.body.name, 100); if (name.length < 2) fail('Họ tên không hợp lệ'); user.name = name; }
     if (req.body.email !== undefined) { const email = clean(req.body.email, 200).toLowerCase(); if (!emailPattern.test(email)) fail('Email không hợp lệ'); user.email = email; }
     if (req.body.phone !== undefined) { const phone = normalizePhone(req.body.phone); if (!phonePattern.test(phone)) fail('Số điện thoại không hợp lệ'); user.phone = phone; }
     user.role = nextRole; user.status = nextStatus;
-    if (req.body.permissions !== undefined) user.permissions = permissions(req.body.permissions);
-    const securityChanged = before.role !== user.role || before.status !== user.status || JSON.stringify(before.permissions) !== JSON.stringify(user.permissions || []);
+    const securityChanged = before.role !== user.role || before.status !== user.status;
     if (securityChanged) user.tokenVersion += 1;
     await user.save();
     if (securityChanged) await RefreshSession.deleteMany({ user: user._id });
-    await audit(req, 'user.updated', 'user', user._id, `Đã cập nhật tài khoản ${user.name}`, { before, after: { role: user.role, status: user.status, permissions: user.permissions || [] } });
+    await audit(req, 'user.updated', 'user', user._id, `Đã cập nhật tài khoản ${user.name}`, { before, after: { role: user.role, status: user.status } });
     res.json({ success: true, message: 'Đã cập nhật tài khoản', data: publicUser(user) });
   } catch (error) { next(error); }
 });
