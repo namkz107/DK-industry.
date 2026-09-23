@@ -43,7 +43,7 @@ router.get('/dashboard', async (req, res, next) => {
   try {
     const monthStart = new Date(); monthStart.setDate(1); monthStart.setHours(0, 0, 0, 0);
     const [customers, staff, blockedUsers, products, lowStock, services, projects, openLeads, openRequests, openOrders, pendingOrders, revenue, monthlyRevenue, recentOrders, recentActivity] = await Promise.all([
-      User.countDocuments({ role: 'customer' }), User.countDocuments({ role: { $in: ['staff', 'admin'] }, status: 'active' }), User.countDocuments({ status: 'blocked' }),
+      User.countDocuments({ role: 'customer' }), User.countDocuments({ role: 'staff', status: 'active' }), User.countDocuments({ status: 'blocked' }),
       Product.countDocuments({ active: true }), Product.countDocuments({ active: true, priceOnRequest: false, stock: { $lte: 5 } }), Service.countDocuments({ published: true }), Project.countDocuments({ published: true }),
       Lead.countDocuments({ status: { $nin: ['won', 'lost', 'spam'] } }), ServiceRequest.countDocuments({ status: { $nin: ['accepted', 'rejected', 'cancelled'] } }), Order.countDocuments({ status: { $nin: ['delivered', 'cancelled'] } }), Order.countDocuments({ status: 'pending' }),
       Order.aggregate([{ $match: { paymentStatus: 'paid' } }, { $group: { _id: null, value: { $sum: '$total' } } }]),

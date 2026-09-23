@@ -31,11 +31,7 @@ function assignmentFilter(query, user) {
 async function assignUser(value, actor) {
   if (!value || value === 'me') return actor._id;
   if (value === 'unassigned') return null;
-  if (actor.role !== 'admin') fail('Nhân viên chỉ có thể nhận hoặc bỏ nhận hồ sơ của chính mình', 403);
-  if (!validId(value)) fail('Nhân viên phụ trách không hợp lệ');
-  const user = await User.findOne({ _id: value, role: { $in: ['staff', 'admin'] }, status: 'active' });
-  if (!user) fail('Không tìm thấy nhân viên đang hoạt động', 404);
-  return user._id;
+  fail('Nhân viên chỉ có thể nhận hoặc bỏ nhận hồ sơ của chính mình', 403);
 }
 
 router.get('/dashboard', async (req, res, next) => {
@@ -56,7 +52,7 @@ router.get('/dashboard', async (req, res, next) => {
 
 router.get('/members', async (req, res, next) => {
   try {
-    const data = await User.find({ role: { $in: ['staff', 'admin'] }, status: 'active' }).select('name email role').sort({ name: 1 }).lean();
+    const data = await User.find({ role: 'staff', status: 'active' }).select('name email role').sort({ name: 1 }).lean();
     res.json({ success: true, data });
   } catch (error) { next(error); }
 });
@@ -95,7 +91,7 @@ router.patch('/leads/:id', async (req, res, next) => {
     if (!lead) fail('Không tìm thấy Lead', 404);
     if (req.body.assignedTo !== undefined) {
       const nextAssignee = await assignUser(req.body.assignedTo, req.user);
-      if (req.user.role !== 'admin' && lead.assignedTo && String(lead.assignedTo) !== String(req.user._id)) fail('Lead đang do nhân viên khác phụ trách', 409);
+      if (lead.assignedTo && String(lead.assignedTo) !== String(req.user._id)) fail('Lead đang do nhân viên khác phụ trách', 409);
       lead.assignedTo = nextAssignee;
       lead.timeline.push({ action: 'assignment_changed', message: nextAssignee ? 'Đã cập nhật người phụ trách.' : 'Đã bỏ người phụ trách.', actor: req.user._id });
     }
@@ -174,7 +170,7 @@ router.patch('/requests/:id', async (req, res, next) => {
     if (!request) fail('Không tìm thấy yêu cầu', 404);
     if (req.body.assignedTo !== undefined) {
       const nextAssignee = await assignUser(req.body.assignedTo, req.user);
-      if (req.user.role !== 'admin' && request.assignedTo && String(request.assignedTo) !== String(req.user._id)) fail('Hồ sơ đang do nhân viên khác phụ trách', 409);
+      if (request.assignedTo && String(request.assignedTo) !== String(req.user._id)) fail('Hồ sơ đang do nhân viên khác phụ trách', 409);
       request.assignedTo = nextAssignee;
     }
     if (req.body.priority !== undefined) {
@@ -305,7 +301,7 @@ router.patch('/orders/:id', async (req, res, next) => {
     if (!validId(req.params.id)) fail('Đơn hàng không hợp lệ', 404);
     const order = await Order.findById(req.params.id).select('+internalNote');
     if (!order) fail('Không tìm thấy đơn hàng', 404);
-    if (req.user.role !== 'admin' && order.assignedTo && String(order.assignedTo) !== String(req.user._id)) fail('Đơn hàng đang do nhân viên khác phụ trách', 409);
+    if (order.assignedTo && String(order.assignedTo) !== String(req.user._id)) fail('Đơn hàng đang do nhân viên khác phụ trách', 409);
     if (req.body.assignedTo !== undefined) {
       const nextAssignee = await assignUser(req.body.assignedTo, req.user);
       order.assignedTo = nextAssignee;

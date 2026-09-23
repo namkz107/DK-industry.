@@ -28,7 +28,7 @@ app.use('/api/auth/register', registrationLimiter);
 app.use('/api/customer/requests', customerRequestLimiter);
 app.use('/api/auth', authRoutes);
 app.use('/api/customer', authenticate, requireRole('customer'), customerRoutes);
-app.use('/api/staff', authenticate, requireRole('staff', 'admin'), staffRoutes);
+app.use('/api/staff', authenticate, requireRole('staff'), staffRoutes);
 app.use('/api', publicRoutes);
 app.use('/api/admin', authenticate, requireRole('admin'), adminRoutes);
 app.use(notFound);

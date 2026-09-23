@@ -41,6 +41,7 @@ test('Admin quản lý nhân sự, nội dung và nhật ký đúng quyền', { 
 
     assert.equal((await call('/admin/dashboard', staffToken)).status, 403);
     assert.equal((await call('/admin/dashboard', adminToken)).status, 200);
+    assert.equal((await call('/staff/dashboard', adminToken)).status, 403);
 
     const createUserResponse = await call('/admin/users', adminToken, { method: 'POST', body: JSON.stringify({ name: 'Nhân viên mới', email: `${token}-new@example.com`, phone: uniqueVietnamesePhone('092'), password: 'Temporary123', role: 'staff', permissions: ['orders.manage', 'invalid.permission'] }) });
     const createUserBody = await createUserResponse.json();
