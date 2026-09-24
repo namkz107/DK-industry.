@@ -6,6 +6,7 @@ import { useForm, type UseFormRegisterReturn } from "react-hook-form"
 import { useSearchParams } from "react-router-dom"
 import { z } from "zod"
 import { AdminShell } from "@/components/admin/admin-shell"
+import { ImageUpload } from "@/components/admin/image-upload"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -27,7 +28,7 @@ export function AdminContentPage() {
   usePageMeta("Sản phẩm và nội dung", "Quản lý dữ liệu hiển thị trên website.")
   const [params, setParams] = useSearchParams(); const queryClient = useQueryClient()
   const kind = (tabs.some(item => item.key === params.get("tab")) ? params.get("tab") : "products") as Kind
-  const [filters, setFilters] = useState({ q: "", state: "" }); const [editing, setEditing] = useState<ContentItem | null>(null); const [showForm, setShowForm] = useState(false)
+  const [filters, setFilters] = useState({ q: "", state: "" }); const [editing, setEditing] = useState<ContentItem | null>(null); const [showForm, setShowForm] = useState(false); const [imageUploading, setImageUploading] = useState(false)
   const products = useQuery({ queryKey: ["admin", "products", filters], queryFn: () => adminClient.products(filters), enabled: kind === "products" })
   const services = useQuery({ queryKey: ["admin", "services", filters], queryFn: () => adminClient.services(filters), enabled: kind === "services" })
   const projects = useQuery({ queryKey: ["admin", "projects", filters], queryFn: () => adminClient.projects(filters), enabled: kind === "projects" })
@@ -65,8 +66,8 @@ export function AdminContentPage() {
       {kind === "products" && <><Field label="Mã SKU"><Input {...form.register("sku")}/></Field><Field label="Giá bán"><Input type="number" min="0" {...form.register("price")}/></Field><Field label="Tồn kho"><Input type="number" min="0" {...form.register("stock")}/></Field><Field label="Đơn vị"><Input {...form.register("unit")}/></Field></>}
       {kind === "services" && <Field label="Mô tả ngắn"><Input {...form.register("summary")}/></Field>}
       {kind === "projects" && <><Field label="Khách hàng"><Input {...form.register("client")}/></Field><Field label="Địa điểm"><Input {...form.register("location")}/></Field><Field label="Năm"><Input {...form.register("year")}/></Field></>}
-      <Field label="Ảnh đại diện (URL)"><Input {...form.register("image")}/></Field><label className="md:col-span-2 xl:col-span-3 text-sm font-bold text-slate-700">Mô tả<Textarea className="mt-2 min-h-28" {...form.register("description")}/></label>
-      <div className="flex flex-wrap items-center gap-5 md:col-span-2 xl:col-span-3"><Check register={form.register("featured")} label="Nổi bật"/><Check register={form.register("visible")} label={kind === "products" ? "Đang bán" : "Đang công khai"}/>{kind === "products" && <Check register={form.register("priceOnRequest")} label="Giá liên hệ"/>}<Button disabled={save.isPending}>{save.isPending ? "Đang lưu..." : "Lưu nội dung"}</Button></div>
+      <ImageUpload value={form.watch("image")} onBusyChange={setImageUploading} onChange={url => form.setValue("image", url, { shouldDirty: true, shouldValidate: true })}/><label className="md:col-span-2 xl:col-span-3 text-sm font-bold text-slate-700">Mô tả<Textarea className="mt-2 min-h-28" {...form.register("description")}/></label>
+      <div className="flex flex-wrap items-center gap-5 md:col-span-2 xl:col-span-3"><Check register={form.register("featured")} label="Nổi bật"/><Check register={form.register("visible")} label={kind === "products" ? "Đang bán" : "Đang công khai"}/>{kind === "products" && <Check register={form.register("priceOnRequest")} label="Giá liên hệ"/>}<Button disabled={save.isPending || imageUploading}>{imageUploading ? "Đang tải ảnh..." : save.isPending ? "Đang lưu..." : "Lưu nội dung"}</Button></div>
     </form>{save.error && <ErrorText error={save.error as Error}/>}</section>}
     <div className="mt-5 grid gap-3 rounded-2xl border bg-white p-4 sm:grid-cols-[1fr_190px]"><label className="relative"><Search className="absolute left-3 top-3.5 size-5 text-slate-400"/><Input className="pl-10" value={filters.q} onChange={event => setFilters({ ...filters, q: event.target.value })} placeholder={`Tìm ${tabName(kind).toLowerCase()}...`}/></label><select className="field-select" value={filters.state} onChange={event => setFilters({ ...filters, state: event.target.value })}><option value="">Tất cả trạng thái</option><option value="published">Đang hiển thị</option><option value="hidden">Đã ẩn</option></select></div>
     <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">{current.data?.data.items.map(item => <ContentCard key={item._id} item={item} onEdit={() => openEdit(item)} onHide={() => { if (window.confirm("Ẩn nội dung này khỏi website?")) hide.mutate(item._id) }}/>)}</div>{current.isLoading && <p className="mt-4 rounded-2xl bg-white p-8 text-center">Đang tải nội dung...</p>}{!current.isLoading && !current.data?.data.items.length && <p className="mt-4 rounded-2xl bg-white p-10 text-center text-slate-500">Chưa có dữ liệu phù hợp.</p>}

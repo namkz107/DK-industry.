@@ -1,3 +1,4 @@
+const path = require('path');
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -21,6 +22,7 @@ app.use(express.json({ limit: '2mb' }));
 app.use(express.urlencoded({ extended: true, limit: '2mb' }));
 app.use(cookieParser());
 if (process.env.NODE_ENV !== 'test') app.use(morgan('dev'));
+app.use('/uploads/content', express.static(path.join(__dirname, '..', 'storage', 'content-images'), { dotfiles: 'deny', index: false, maxAge: '7d' }));
 app.use('/api', apiLimiter, rejectUnsafeKeys);
 app.use('/api/leads', leadLimiter);
 app.use('/api/auth/login', authLimiter);

@@ -7,6 +7,7 @@ const query = (values: Record<string, string | undefined>) => new URLSearchParam
 
 export const adminClient = {
   dashboard: () => authClient.authenticated<Result<AdminDashboard>>("/admin/dashboard"),
+  uploadImage: (file: File) => { const body = new FormData(); body.append("image", file); return authClient.authenticated<Result<{ url: string; filename: string }>>("/admin/uploads/images", { method: "POST", body }) },
   users: (filters: { q?: string; role?: string; status?: string } = {}) => authClient.authenticated<Result<AdminPaged<AdminUser>>>(`/admin/users?${query(filters)}`),
   createUser: (body: { name: string; email: string; phone: string; password: string; role: "staff" | "admin" }) => authClient.authenticated<Result<AdminUser>>("/admin/users", json("POST", body)),
   updateUser: (id: string, body: Partial<Pick<AdminUser, "name" | "email" | "phone" | "role" | "status">>) => authClient.authenticated<Result<AdminUser>>(`/admin/users/${id}`, json("PATCH", body)),
