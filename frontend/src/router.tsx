@@ -11,6 +11,7 @@ export const router = createBrowserRouter([{ element: <AppLayout />, children: [
   { path: "/dich-vu", lazy: async () => { const module = await import("@/pages/services-page"); return { Component: module.ServicesPage } } },
   { path: "/du-an", lazy: async () => { const module = await import("@/pages/projects-page"); return { Component: module.ProjectsPage } } },
   { path: "/san-pham", lazy: async () => { const module = await import("@/pages/products-page"); return { Component: module.ProductsPage } } },
+  { path: "/lien-he", lazy: async () => { const module = await import("@/pages/contact-page"); return { Component: module.ContactPage } } },
   { path: "/dang-nhap", lazy: async () => { const module = await import("@/pages/login-page"); return { Component: module.LoginPage } } },
   { path: "/dang-ky", lazy: async () => { const module = await import("@/pages/register-page"); return { Component: module.RegisterPage } } },
   { element: <RequireAuth />, children: [

@@ -9,6 +9,12 @@ const addressSchema = new mongoose.Schema({
   ward: { type: String, trim: true, maxlength: 100 },
   district: { type: String, required: true, trim: true, maxlength: 100 },
   province: { type: String, required: true, trim: true, maxlength: 100 },
+  formattedAddress: { type: String, trim: true, maxlength: 500 },
+  placeId: { type: String, trim: true, maxlength: 300 },
+  latitude: { type: Number, min: -90, max: 90 },
+  longitude: { type: Number, min: -180, max: 180 },
+  accuracyMeters: { type: Number, min: 0, max: 100000 },
+  locationConfirmed: { type: Boolean, default: false },
   isDefault: { type: Boolean, default: false }
 }, { _id: true, timestamps: true });
 

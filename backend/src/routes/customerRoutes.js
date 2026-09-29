@@ -39,6 +39,11 @@ const normalizePhone = value => clean(value).replace(/[\s.-]/g, '');
 const fail = (message, status = 400) => { throw Object.assign(new Error(message), { status }); };
 const code = prefix => `${prefix}-${new Date().toISOString().slice(2, 10).replaceAll('-', '')}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
 const validId = value => mongoose.isValidObjectId(value);
+const finiteCoordinate = (value, min, max) => {
+  if (value === undefined || value === null || value === '') return undefined;
+  const number = Number(value);
+  return Number.isFinite(number) && number >= min && number <= max ? number : undefined;
+};
 
 function addressValues(body) {
   const values = {
@@ -49,12 +54,68 @@ function addressValues(body) {
     ward: clean(body.ward),
     district: clean(body.district),
     province: clean(body.province),
+    formattedAddress: clean(body.formattedAddress),
+    placeId: clean(body.placeId),
+    latitude: finiteCoordinate(body.latitude, -90, 90),
+    longitude: finiteCoordinate(body.longitude, -180, 180),
+    accuracyMeters: finiteCoordinate(body.accuracyMeters, 0, 100000),
+    locationConfirmed: body.locationConfirmed === true || body.locationConfirmed === 'true',
     isDefault: body.isDefault === true || body.isDefault === 'true'
   };
+  if (values.latitude === undefined || values.longitude === undefined) {
+    values.latitude = undefined;
+    values.longitude = undefined;
+    values.accuracyMeters = undefined;
+    values.locationConfirmed = false;
+  }
   if (!values.recipientName || !phonePattern.test(values.phone) || !values.addressLine || !values.district || !values.province) {
     fail('Vui lòng nhập đủ người nhận, số điện thoại và địa chỉ giao hàng');
   }
   return values;
+}
+
+function googleMapsKey() {
+  const key = process.env.GOOGLE_MAPS_SERVER_API_KEY;
+  if (!key) fail('Tìm kiếm vị trí chưa được cấu hình', 503);
+  return key;
+}
+
+async function googleRequest(url, options = {}) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 8000);
+  try {
+    const response = await fetch(url, { ...options, signal: controller.signal });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      const error = new Error(body?.error?.message || 'Không thể kết nối dịch vụ bản đồ');
+      error.status = response.status === 429 ? 429 : 502;
+      throw error;
+    }
+    return body;
+  } catch (error) {
+    if (error.name === 'AbortError') fail('Dịch vụ bản đồ phản hồi quá chậm', 504);
+    throw error;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function componentValue(components, types) {
+  const component = (components || []).find(item => types.some(type => item.types?.includes(type)));
+  return component?.longText || component?.long_name || '';
+}
+
+function structuredAddress(components) {
+  return {
+    province: componentValue(components, ['administrative_area_level_1']),
+    district: componentValue(components, ['administrative_area_level_2', 'locality']),
+    ward: componentValue(components, ['administrative_area_level_3', 'sublocality_level_1', 'ward']),
+    addressLine: [
+      componentValue(components, ['street_number']),
+      componentValue(components, ['route']),
+      componentValue(components, ['premise', 'establishment'])
+    ].filter(Boolean).join(' ')
+  };
 }
 
 function cartView(cart) {
@@ -89,6 +150,80 @@ router.get('/summary', async (req, res, next) => {
       populatedCart(req.user._id)
     ]);
     res.json({ success: true, data: { orders, openOrders, requests, openRequests, cartItems: cartView(cart).itemCount } });
+  } catch (error) { next(error); }
+});
+
+router.get('/locations/autocomplete', async (req, res, next) => {
+  try {
+    const input = clean(req.query.input).slice(0, 200);
+    if (input.length < 3) return res.json({ success: true, data: [] });
+    const sessionToken = clean(req.query.sessionToken).slice(0, 100);
+    const latitude = finiteCoordinate(req.query.latitude, -90, 90);
+    const longitude = finiteCoordinate(req.query.longitude, -180, 180);
+    const requestBody = { input, languageCode: 'vi', regionCode: 'VN' };
+    if (sessionToken) requestBody.sessionToken = sessionToken;
+    if (latitude !== undefined && longitude !== undefined) requestBody.locationBias = {
+      circle: { center: { latitude, longitude }, radius: 50000 }
+    };
+    const result = await googleRequest('https://places.googleapis.com/v1/places:autocomplete', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Goog-Api-Key': googleMapsKey(),
+        'X-Goog-FieldMask': 'suggestions.placePrediction.placeId,suggestions.placePrediction.text,suggestions.placePrediction.structuredFormat'
+      },
+      body: JSON.stringify(requestBody)
+    });
+    const suggestions = (result.suggestions || []).flatMap(item => item.placePrediction ? [{
+      placeId: item.placePrediction.placeId,
+      text: item.placePrediction.text?.text || '',
+      mainText: item.placePrediction.structuredFormat?.mainText?.text || item.placePrediction.text?.text || '',
+      secondaryText: item.placePrediction.structuredFormat?.secondaryText?.text || ''
+    }] : []);
+    res.json({ success: true, data: suggestions });
+  } catch (error) { next(error); }
+});
+
+router.get('/locations/place/:placeId', async (req, res, next) => {
+  try {
+    const placeId = clean(req.params.placeId).slice(0, 300);
+    if (!placeId) fail('Địa điểm không hợp lệ');
+    const query = new URLSearchParams({ languageCode: 'vi' });
+    const sessionToken = clean(req.query.sessionToken).slice(0, 100);
+    if (sessionToken) query.set('sessionToken', sessionToken);
+    const result = await googleRequest(`https://places.googleapis.com/v1/places/${encodeURIComponent(placeId)}?${query}`, {
+      headers: {
+        'X-Goog-Api-Key': googleMapsKey(),
+        'X-Goog-FieldMask': 'id,formattedAddress,location,addressComponents,displayName'
+      }
+    });
+    res.json({ success: true, data: {
+      placeId: result.id || placeId,
+      formattedAddress: result.formattedAddress || '',
+      latitude: result.location?.latitude,
+      longitude: result.location?.longitude,
+      ...structuredAddress(result.addressComponents)
+    } });
+  } catch (error) { next(error); }
+});
+
+router.post('/locations/reverse', async (req, res, next) => {
+  try {
+    const latitude = finiteCoordinate(req.body.latitude, -90, 90);
+    const longitude = finiteCoordinate(req.body.longitude, -180, 180);
+    if (latitude === undefined || longitude === undefined) fail('Tọa độ không hợp lệ');
+    const query = new URLSearchParams({ latlng: `${latitude},${longitude}`, language: 'vi', key: googleMapsKey() });
+    const result = await googleRequest(`https://maps.googleapis.com/maps/api/geocode/json?${query}`);
+    if (result.status === 'ZERO_RESULTS' || !result.results?.length && result.status === 'OK') fail('Không tìm thấy địa chỉ tại vị trí này', 404);
+    if (result.status !== 'OK') fail(result.error_message || 'Dịch vụ bản đồ không thể xử lý vị trí', 502);
+    const match = result.results[0];
+    res.json({ success: true, data: {
+      placeId: match.place_id || '',
+      formattedAddress: match.formatted_address || '',
+      latitude,
+      longitude,
+      ...structuredAddress(match.address_components)
+    } });
   } catch (error) { next(error); }
 });
 
@@ -223,7 +358,12 @@ router.post('/orders', async (req, res, next) => {
     const subtotal = items.reduce((total, item) => total + item.lineTotal, 0);
     const order = await Order.create({
       code: code('DH'), customer: req.user._id, items,
-      shippingAddress: { recipientName: address.recipientName, phone: address.phone, addressLine: address.addressLine, ward: address.ward, district: address.district, province: address.province },
+      shippingAddress: {
+        recipientName: address.recipientName, phone: address.phone, addressLine: address.addressLine, ward: address.ward,
+        district: address.district, province: address.province, formattedAddress: address.formattedAddress,
+        placeId: address.placeId, latitude: address.latitude, longitude: address.longitude,
+        accuracyMeters: address.accuracyMeters, locationConfirmed: address.locationConfirmed
+      },
       subtotal, shippingFee: 0, total: subtotal, paymentMethod,
       customerNote: clean(req.body.customerNote),
       paymentTimeline: [{ status: 'unpaid', message: paymentMethod === 'cod' ? 'Thanh toán khi nhận hàng.' : 'Chờ nhân viên xác nhận thông tin chuyển khoản.' }],

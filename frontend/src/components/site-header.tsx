@@ -7,7 +7,7 @@ import { useAuth } from "@/contexts/auth-context"
 import { customerClient } from "@/lib/customer-client"
 import { cn } from "@/lib/utils"
 
-const links = [{ to: "/", label: "Trang chủ" }, { to: "/gioi-thieu", label: "Giới thiệu" }, { to: "/dich-vu", label: "Dịch vụ" }, { to: "/du-an", label: "Dự án" }, { to: "/san-pham", label: "Sản phẩm" }]
+const links = [{ to: "/", label: "Trang chủ" }, { to: "/gioi-thieu", label: "Giới thiệu" }, { to: "/dich-vu", label: "Dịch vụ" }, { to: "/du-an", label: "Dự án" }, { to: "/san-pham", label: "Sản phẩm" }, { to: "/lien-he", label: "Liên hệ" }]
 const logoUrl = import.meta.env.VITE_CLOUDINARY_LOGO_URL || "https://res.cloudinary.com/dgbounqav/image/upload/f_auto,q_auto/logo_dk_uhmnyn"
 const roleHome = (role?: "customer" | "staff" | "admin") => role === "admin" ? "/admin" : role === "staff" ? "/staff" : "/tai-khoan"
 

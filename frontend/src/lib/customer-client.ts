@@ -1,5 +1,5 @@
 import { authClient } from "@/lib/auth-client"
-import type { Address, Cart, CustomerOrder, CustomerProfile, CustomerRequest, CustomerSummary, Quotation, RequestDetail } from "@/types/customer"
+import type { Address, Cart, CustomerOrder, CustomerProfile, CustomerRequest, CustomerSummary, LocationDetails, PlaceSuggestion, Quotation, RequestDetail } from "@/types/customer"
 
 type Result<T> = { success: boolean; data: T; message?: string }
 const json = (method: string, body?: unknown): RequestInit => ({ method, body: body === undefined ? undefined : JSON.stringify(body) })
@@ -11,6 +11,13 @@ export const customerClient = {
   addAddress: (body: Omit<Address, "_id">) => authClient.authenticated<Result<Address[]>>("/customer/addresses", json("POST", body)),
   updateAddress: (id: string, body: Omit<Address, "_id">) => authClient.authenticated<Result<Address[]>>(`/customer/addresses/${id}`, json("PATCH", body)),
   deleteAddress: (id: string) => authClient.authenticated<Result<Address[]>>(`/customer/addresses/${id}`, { method: "DELETE" }),
+  autocompleteLocation: (input: string, sessionToken: string, origin?: { latitude: number; longitude: number }) => {
+    const query = new URLSearchParams({ input, sessionToken })
+    if (origin) { query.set("latitude", String(origin.latitude)); query.set("longitude", String(origin.longitude)) }
+    return authClient.authenticated<Result<PlaceSuggestion[]>>(`/customer/locations/autocomplete?${query}`)
+  },
+  locationDetails: (placeId: string, sessionToken: string) => authClient.authenticated<Result<LocationDetails>>(`/customer/locations/place/${encodeURIComponent(placeId)}?sessionToken=${encodeURIComponent(sessionToken)}`),
+  reverseLocation: (latitude: number, longitude: number) => authClient.authenticated<Result<LocationDetails>>("/customer/locations/reverse", json("POST", { latitude, longitude })),
   cart: () => authClient.authenticated<Result<Cart>>("/customer/cart"),
   addCartItem: (productId: string, quantity = 1) => authClient.authenticated<Result<Cart>>("/customer/cart/items", json("POST", { productId, quantity })),
   updateCartItem: (productId: string, quantity: number) => authClient.authenticated<Result<Cart>>(`/customer/cart/items/${productId}`, json("PATCH", { quantity })),

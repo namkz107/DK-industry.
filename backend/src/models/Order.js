@@ -19,7 +19,13 @@ const orderSchema = new mongoose.Schema({
     addressLine: { type: String, required: true },
     ward: String,
     district: { type: String, required: true },
-    province: { type: String, required: true }
+    province: { type: String, required: true },
+    formattedAddress: String,
+    placeId: String,
+    latitude: { type: Number, min: -90, max: 90 },
+    longitude: { type: Number, min: -180, max: 180 },
+    accuracyMeters: { type: Number, min: 0 },
+    locationConfirmed: { type: Boolean, default: false }
   },
   subtotal: { type: Number, required: true, min: 0 },
   shippingFee: { type: Number, default: 0, min: 0 },

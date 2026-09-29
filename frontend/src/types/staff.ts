@@ -26,7 +26,7 @@ export interface StaffOrder {
   _id: string; code: string; status: OrderStatus; paymentStatus: PaymentStatus; paymentMethod: "cod" | "bank_transfer"
   customer: { _id: string; name: string; email: string; phone?: string; company?: string }; assignedTo?: StaffMember | null; internalNote?: string; customerNote?: string
   items: Array<{ _id: string; name: string; sku?: string; unit?: string; price: number; quantity: number; lineTotal: number }>; subtotal: number; shippingFee: number; total: number
-  shippingAddress: { recipientName: string; phone: string; addressLine: string; ward?: string; district: string; province: string }
+  shippingAddress: { recipientName: string; phone: string; addressLine: string; ward?: string; district: string; province: string; formattedAddress?: string; placeId?: string; latitude?: number; longitude?: number; accuracyMeters?: number; locationConfirmed?: boolean }
   timeline: Array<{ _id: string; status: string; message?: string; at: string; actor?: StaffMember }>; createdAt: string
   paymentTimeline: Array<{ _id: string; status: PaymentStatus; message?: string; at: string; actor?: StaffMember }>
   shippingProvider?: string; trackingCode?: string; estimatedDeliveryAt?: string; cancellationReason?: string

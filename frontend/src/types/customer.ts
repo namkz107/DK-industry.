@@ -9,7 +9,19 @@ export interface Address {
   ward?: string
   district: string
   province: string
+  formattedAddress?: string
+  placeId?: string
+  latitude?: number
+  longitude?: number
+  accuracyMeters?: number
+  locationConfirmed?: boolean
   isDefault: boolean
+}
+
+export interface PlaceSuggestion { placeId: string; text: string; mainText: string; secondaryText: string }
+export interface LocationDetails {
+  placeId?: string; formattedAddress?: string; latitude: number; longitude: number
+  addressLine?: string; ward?: string; district?: string; province?: string; accuracyMeters?: number
 }
 
 export interface CustomerProfile {

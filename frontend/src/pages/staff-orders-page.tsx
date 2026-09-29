@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { Banknote, CalendarClock, CheckCircle2, History, MapPin, PackageCheck, Phone, Search, Truck, UserCheck } from "lucide-react"
+import { Banknote, CalendarClock, CheckCircle2, History, MapPin, Navigation, PackageCheck, Phone, Search, Truck, UserCheck } from "lucide-react"
 import { useEffect, useState, type FormEvent, type ReactNode } from "react"
 import { useSearchParams } from "react-router-dom"
 import { StaffShell } from "@/components/staff/staff-shell"
@@ -63,6 +63,9 @@ function OrderDetail({ order, busy, success, error, onUpdate }: { order: StaffOr
   }, [order])
 
   const allowedPayments = paymentTransitions[order.paymentStatus].filter(status => status !== "refund_pending" || order.status === "cancelled")
+  const directionsUrl = order.shippingAddress.latitude !== undefined && order.shippingAddress.longitude !== undefined
+    ? `https://www.google.com/maps/dir/?api=1&destination=${order.shippingAddress.latitude},${order.shippingAddress.longitude}${order.shippingAddress.placeId ? `&destination_place_id=${encodeURIComponent(order.shippingAddress.placeId)}` : ""}`
+    : ""
   const submitProgress = (event: FormEvent) => {
     event.preventDefault()
     const body: Parameters<typeof staffClient.updateOrder>[1] = { message }
@@ -75,6 +78,7 @@ function OrderDetail({ order, busy, success, error, onUpdate }: { order: StaffOr
     <div className="flex flex-col justify-between gap-4 md:flex-row"><div><div className="flex flex-wrap items-center gap-2"><span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-black text-emerald-800">{statusNames[order.status]}</span><span className="rounded-full bg-orange-50 px-3 py-1 text-xs font-black text-orange-800">{paymentNames[order.paymentStatus]}</span></div><p className="mt-3 text-sm font-black uppercase tracking-wider text-orange-700">{order.code}</p><h2 className="mt-1 font-display text-3xl font-bold text-emerald-950">{order.shippingAddress.recipientName}</h2><p className="mt-2 text-slate-600">{order.customer.name} · {order.paymentMethod === "cod" ? "Thanh toán khi nhận" : "Chuyển khoản"}</p></div><Button onClick={() => onUpdate({ assignedTo: order.assignedTo ? "unassigned" : "me" })} disabled={busy} variant={order.assignedTo ? "outline" : "default"}><UserCheck className="size-5"/>{order.assignedTo ? `Phụ trách: ${order.assignedTo.name}` : "Nhận phụ trách"}</Button></div>
 
     <div className="mt-6 grid gap-4 rounded-2xl bg-slate-50 p-5 md:grid-cols-2"><p className="flex gap-3"><MapPin className="mt-1 size-5 shrink-0 text-orange-600"/><span>{order.shippingAddress.addressLine}, {order.shippingAddress.ward && `${order.shippingAddress.ward}, `}{order.shippingAddress.district}, {order.shippingAddress.province}</span></p><a className="flex min-h-11 items-center gap-3 font-bold text-emerald-800" href={`tel:${order.shippingAddress.phone}`}><Phone className="size-5 text-orange-600"/>{order.shippingAddress.phone}</a></div>
+    {directionsUrl && <a className="mt-3 inline-flex min-h-11 items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 text-sm font-bold text-emerald-800 hover:border-orange-300 hover:text-orange-700" href={directionsUrl} target="_blank" rel="noreferrer"><Navigation className="size-4"/>Chỉ đường đến điểm giao hàng</a>}
 
     <div className="mt-6 overflow-x-auto"><table className="w-full min-w-[560px] text-left"><thead className="border-b text-sm text-slate-500"><tr><th className="py-3">Sản phẩm</th><th>SL</th><th>Đơn giá</th><th className="text-right">Thành tiền</th></tr></thead><tbody>{order.items.map(item => <tr key={item._id} className="border-b"><td className="py-4 font-bold text-emerald-950">{item.name}<span className="block text-xs font-normal text-slate-500">{item.sku}</span></td><td>{item.quantity} {item.unit}</td><td>{money.format(item.price)}</td><td className="text-right font-bold">{money.format(item.lineTotal)}</td></tr>)}</tbody></table><div className="ml-auto mt-5 max-w-sm space-y-2 text-sm"><p className="flex justify-between"><span className="text-slate-500">Tiền hàng</span><strong>{money.format(order.subtotal)}</strong></p><p className="flex justify-between"><span className="text-slate-500">Vận chuyển</span><strong>{money.format(order.shippingFee)}</strong></p><p className="flex justify-between border-t pt-2 font-display text-xl"><span>Tổng</span><strong className="text-orange-700">{money.format(order.total)}</strong></p></div></div>
 
