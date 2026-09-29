@@ -42,9 +42,11 @@ export type PaymentStatus = "unpaid" | "pending" | "paid" | "refund_pending" | "
 export interface CustomerOrder {
   _id: string; code: string; items: OrderItem[]; subtotal: number; shippingFee: number; total: number
   paymentMethod: "cod" | "bank_transfer"; paymentStatus: PaymentStatus; status: string; customerNote?: string
+  termsAcceptedAt: string; termsVersion: string
   shippingAddress: Omit<Address, "_id" | "label" | "isDefault">; timeline: TimelineItem[]; createdAt: string
   paymentTimeline?: Array<{ status: PaymentStatus; message?: string; at: string }>
   shippingProvider?: string; trackingCode?: string; estimatedDeliveryAt?: string; cancellationReason?: string
+  afterSalesRequests?: Array<{ _id: string; type: "return" | "warranty" | "complaint"; reason: string; status: "submitted" | "reviewing" | "approved" | "rejected" | "received" | "resolved"; resolution?: string; submittedAt: string; resolvedAt?: string }>
 }
 
 export interface RequestAttachment { _id: string; originalName: string; mimeType?: string; size?: number }
@@ -55,12 +57,17 @@ export interface Quotation {
   currency: "VND"; leadTime?: string; paymentTerms?: string; notes?: string; validUntil: string
   status: "sent" | "accepted" | "rejected" | "superseded" | "expired"; sentAt?: string; respondedAt?: string; responseNote?: string
 }
+export interface WorkOrder {
+  _id: string; code: string; status: "awaiting_contract" | "awaiting_deposit" | "scheduled" | "in_progress" | "quality_check" | "ready_for_delivery" | "completed" | "cancelled"
+  agreedTotal: number; depositRequired: number; depositPaid: number; contractReference?: string; purchaseOrderReference?: string
+  plannedStartAt?: string; plannedDeliveryAt?: string; timeline: TimelineItem[]
+}
 export interface CustomerRequest {
   _id: string; code: string; requestType: "machining" | "product_quote" | "consulting"; title: string; description: string
   material?: string; quantity?: number; dimensions?: string; desiredDate?: string; budget?: string
   productSnapshot?: { name?: string; sku?: string; unit?: string }; attachments: RequestAttachment[]
   status: string; timeline: TimelineItem[]; createdAt: string; latestQuotation?: Quotation | null
 }
-export interface RequestDetail { request: CustomerRequest; messages: RequestMessage[]; quotations: Quotation[] }
+export interface RequestDetail { request: CustomerRequest; messages: RequestMessage[]; quotations: Quotation[]; workOrder?: WorkOrder | null }
 
 export interface CustomerSummary { orders: number; openOrders: number; requests: number; openRequests: number; cartItems: number }

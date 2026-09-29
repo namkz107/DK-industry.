@@ -29,6 +29,7 @@ const serviceRequestSchema = new mongoose.Schema({
   timeline: [{ status: String, message: String, actorType: { type: String, enum: ['customer', 'staff', 'system'], default: 'system' }, actor: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, at: { type: Date, default: Date.now } }],
   lastCustomerMessageAt: Date,
   lastStaffMessageAt: Date,
+  quotationSequence: { type: Number, default: 0, min: 0 },
   closedAt: Date
 }, { timestamps: true });
 

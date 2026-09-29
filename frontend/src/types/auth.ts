@@ -9,6 +9,7 @@ export interface AuthUser {
   permissions: string[]
   company: string
   status: "active" | "blocked"
+  emailVerified?: boolean
 }
 
 export interface AuthPayload {

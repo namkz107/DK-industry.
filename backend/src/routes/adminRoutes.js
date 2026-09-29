@@ -17,6 +17,7 @@ const User = require('../models/User');
 const router = express.Router();
 const phonePattern = /^(?:\+84|0)[0-9]{9,10}$/;
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const passwordPattern = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,72}$/;
 const staffRoles = new Set(['staff', 'admin']);
 const userRoles = new Set(['customer', 'staff', 'admin']);
 const userStatuses = new Set(['active', 'blocked']);
@@ -97,7 +98,7 @@ router.post('/users', async (req, res, next) => {
     const name = clean(req.body.name, 100); const email = clean(req.body.email, 200).toLowerCase(); const phone = normalizePhone(req.body.phone); const password = String(req.body.password || '');
     const role = staffRoles.has(req.body.role) ? req.body.role : 'staff';
     if (name.length < 2 || !emailPattern.test(email) || !phonePattern.test(phone)) fail('Họ tên, email hoặc số điện thoại không hợp lệ');
-    if (password.length < 8 || password.length > 128) fail('Mật khẩu tạm thời phải có từ 8 đến 128 ký tự');
+    if (!passwordPattern.test(password)) fail('Mật khẩu tạm thời cần từ 8 đến 72 ký tự, gồm chữ hoa, chữ thường và số');
     const user = await User.create({ name, email, phone, role, permissions: [], passwordHash: await User.hashPassword(password), status: 'active' });
     await audit(req, 'user.created', 'user', user._id, `Đã tạo tài khoản ${role}: ${user.name}`);
     res.status(201).json({ success: true, message: 'Đã tạo tài khoản nhân sự', data: publicUser(user) });
@@ -136,7 +137,7 @@ router.post('/users/:id/reset-password', async (req, res, next) => {
   try {
     if (!validId(req.params.id)) fail('Tài khoản không hợp lệ', 404);
     const password = String(req.body.password || '');
-    if (password.length < 8 || password.length > 128) fail('Mật khẩu mới phải có từ 8 đến 128 ký tự');
+    if (!passwordPattern.test(password)) fail('Mật khẩu mới cần từ 8 đến 72 ký tự, gồm chữ hoa, chữ thường và số');
     const user = await User.findById(req.params.id).select('+passwordHash +tokenVersion');
     if (!user) fail('Không tìm thấy tài khoản', 404);
     user.passwordHash = await User.hashPassword(password); user.tokenVersion += 1; await user.save();

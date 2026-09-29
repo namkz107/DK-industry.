@@ -59,7 +59,8 @@ function publicUser(user) {
     role: user.role,
     permissions: user.permissions || [],
     company: user.company || '',
-    status: user.status
+    status: user.status,
+    emailVerified: Boolean(user.emailVerifiedAt)
   };
 }
 

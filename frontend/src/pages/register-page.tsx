@@ -42,7 +42,7 @@ export function RegisterPage() {
       <Field label="Nhập lại mật khẩu" error={form.formState.errors.confirmPassword?.message}><Input type={showPassword ? "text" : "password"} autoComplete="new-password" placeholder="Nhập lại mật khẩu" {...form.register("confirmPassword")}/></Field>
       {serverError && <p role="alert" className="mb-5 rounded-xl bg-red-50 p-4 text-sm font-semibold text-red-700">{serverError}</p>}
       <Button className="w-full" size="lg" disabled={form.formState.isSubmitting}>{form.formState.isSubmitting ? <><LoaderCircle className="size-5 animate-spin"/>Đang tạo tài khoản...</> : <><UserPlus className="size-5"/>Tạo tài khoản</>}</Button>
-      <p className="mt-4 text-center text-xs leading-5 text-slate-500">Bằng việc đăng ký, bạn đồng ý cung cấp thông tin để Cơ khí Đăng Khoa xử lý yêu cầu và đơn hàng.</p>
+      <p className="mt-4 text-center text-xs leading-5 text-slate-500">Bằng việc đăng ký, bạn xác nhận đã đọc <Link className="font-bold text-orange-700" to="/chinh-sach/bao-mat">chính sách bảo mật</Link> và <Link className="font-bold text-orange-700" to="/chinh-sach/dieu-khoan">điều khoản sử dụng</Link>.</p>
       <p className="mt-4 text-center text-sm text-slate-600">Đã có tài khoản? <Link className="font-bold text-orange-700 hover:underline" to="/dang-nhap">Đăng nhập</Link></p>
     </form>
   </AuthShell>

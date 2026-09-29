@@ -9,6 +9,7 @@ export interface StaffDashboard { newLeads: number; myLeads: number; openRequest
 export interface StaffLead {
   _id: string; code: string; name: string; phone: string; email?: string; company?: string; serviceType?: string; budget?: string; message?: string
   source: string; priority: Priority; status: LeadStatus; assignedTo?: StaffMember | null; nextFollowUpAt?: string; lostReason?: string; createdAt: string
+  convertedCustomer?: string; convertedRequest?: string
   notes?: Array<{ _id: string; content: string; author?: StaffMember; createdAt: string }>
   timeline?: Array<{ _id: string; action: string; fromStatus?: string; toStatus?: string; message?: string; actor?: StaffMember; at: string }>
 }
@@ -25,10 +26,19 @@ export interface Paged<T> { items: T[]; total: number; page: number; pages: numb
 export interface StaffOrder {
   _id: string; code: string; status: OrderStatus; paymentStatus: PaymentStatus; paymentMethod: "cod" | "bank_transfer"
   customer: { _id: string; name: string; email: string; phone?: string; company?: string }; assignedTo?: StaffMember | null; internalNote?: string; customerNote?: string
-  items: Array<{ _id: string; name: string; sku?: string; unit?: string; price: number; quantity: number; lineTotal: number }>; subtotal: number; shippingFee: number; total: number
+  items: Array<{ _id: string; name: string; sku?: string; unit?: string; price: number; quantity: number; lineTotal: number }>; subtotal: number; shippingFee: number; total: number; amountPaid?: number; paymentReference?: string; paymentLockedAt?: string
   shippingAddress: { recipientName: string; phone: string; addressLine: string; ward?: string; district: string; province: string; formattedAddress?: string; placeId?: string; latitude?: number; longitude?: number; accuracyMeters?: number; locationConfirmed?: boolean }
   timeline: Array<{ _id: string; status: string; message?: string; at: string; actor?: StaffMember }>; createdAt: string
   paymentTimeline: Array<{ _id: string; status: PaymentStatus; message?: string; at: string; actor?: StaffMember }>
   shippingProvider?: string; trackingCode?: string; estimatedDeliveryAt?: string; cancellationReason?: string
+  afterSalesRequests?: Array<{ _id: string; type: "return" | "warranty" | "complaint"; reason: string; status: "submitted" | "reviewing" | "approved" | "rejected" | "received" | "resolved"; resolution?: string; submittedAt: string }>
   confirmedAt?: string; preparingAt?: string; shippedAt?: string; deliveredAt?: string; cancelledAt?: string; paidAt?: string; refundedAt?: string
+}
+export type WorkOrderStatus = "awaiting_contract" | "awaiting_deposit" | "scheduled" | "in_progress" | "quality_check" | "ready_for_delivery" | "completed" | "cancelled"
+export interface StaffWorkOrder {
+  _id: string; code: string; status: WorkOrderStatus; agreedTotal: number; depositRequired: number; depositPaid: number
+  contractReference?: string; purchaseOrderReference?: string; plannedStartAt?: string; plannedDeliveryAt?: string; createdAt: string
+  customer: { _id: string; name: string; email: string; phone?: string; company?: string }; assignedTo?: StaffMember | null
+  request: { _id: string; code: string; title: string }; quotation: { _id: string; code: string; total: number }
+  timeline: Array<{ status: string; message?: string; at: string }>
 }

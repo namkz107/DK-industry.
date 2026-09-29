@@ -1,4 +1,4 @@
-import { Boxes, ClipboardClock, LayoutDashboard, LogOut, ShieldCheck, UserCog } from "lucide-react"
+import { Boxes, ClipboardClock, ClipboardList, LayoutDashboard, LogOut, ShieldCheck, UserCog } from "lucide-react"
 import type { PropsWithChildren, ReactNode } from "react"
 import { NavLink, useNavigate } from "react-router-dom"
 import { Button } from "@/components/ui/button"
@@ -10,6 +10,7 @@ const navigation = [
   { to: "/admin/nhan-su", label: "Nhân sự", icon: UserCog },
   { to: "/admin/noi-dung", label: "Sản phẩm & nội dung", icon: Boxes },
   { to: "/admin/nhat-ky", label: "Nhật ký", icon: ClipboardClock },
+  { to: "/staff", label: "Vận hành", icon: ClipboardList },
 ]
 
 export function AdminShell({ title, description, action, children }: PropsWithChildren<{ title: string; description: string; action?: ReactNode }>) {

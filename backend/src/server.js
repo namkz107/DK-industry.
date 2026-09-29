@@ -1,8 +1,20 @@
 require('dotenv').config();
 const app = require('./app');
 const connectDatabase = require('./config/database');
+const { runMaintenance } = require('./services/maintenanceService');
+const { transactionsRequired } = require('./services/transactionService');
 
 const port = process.env.PORT || 5000;
 connectDatabase()
-  .then(() => app.listen(port, () => console.log(`DK Industry API running at http://localhost:${port}`)))
+  .then(async () => {
+    if (transactionsRequired()) {
+      const hello = await require('mongoose').connection.db.admin().command({ hello: 1 });
+      if (!hello.setName && !hello.msg?.includes('isdbgrid')) throw new Error('Production requires a MongoDB replica set or sharded cluster for transactional writes');
+    }
+    const server = app.listen(port, () => console.log(`DK Industry API running at http://localhost:${port}`));
+    const maintenanceTimer = setInterval(() => runMaintenance().catch(error => console.error('Maintenance failed:', error.message)), 15 * 60 * 1000);
+    maintenanceTimer.unref();
+    runMaintenance().catch(error => console.error('Initial maintenance failed:', error.message));
+    return server;
+  })
   .catch(error => { console.error('Cannot connect to MongoDB:', error.message); process.exit(1); });

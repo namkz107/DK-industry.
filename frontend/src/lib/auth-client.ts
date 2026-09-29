@@ -70,4 +70,7 @@ export const authClient = {
   changePassword(payload: { currentPassword: string; newPassword: string }) {
     return this.authenticated<{ success: boolean; message: string }>("/auth/change-password", { method: "POST", body: JSON.stringify(payload) })
   },
+  forgotPassword(email: string) { return publicPost<{ success: boolean; message: string }>("/auth/forgot-password", { email }) },
+  resetPassword(token: string, password: string) { return publicPost<{ success: boolean; message: string }>("/auth/reset-password", { token, password }) },
+  verifyEmail(token: string) { return publicPost<{ success: boolean; message: string }>("/auth/verify-email", { token }) },
 }

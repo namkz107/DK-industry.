@@ -1,4 +1,5 @@
 const User = require('../models/User');
+const RefreshSession = require('../models/RefreshSession');
 const { verifyAccessToken } = require('../services/authService');
 
 async function authenticate(req, res, next) {
@@ -9,6 +10,10 @@ async function authenticate(req, res, next) {
     const user = await User.findById(payload.sub).select('+tokenVersion');
     if (!user || user.status !== 'active' || user.tokenVersion !== payload.tv) {
       return res.status(401).json({ success: false, message: 'Phiên đăng nhập không còn hiệu lực' });
+    }
+    if ((process.env.NODE_ENV === 'production' || process.env.ENFORCE_SESSION_CHECK === 'true') && payload.sid) {
+      const activeSession = await RefreshSession.exists({ _id: payload.sid, user: user._id, revokedAt: null, expiresAt: { $gt: new Date() } });
+      if (!activeSession) return res.status(401).json({ success: false, message: 'Phiên đăng nhập đã bị thu hồi' });
     }
     req.user = user;
     req.auth = payload;

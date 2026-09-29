@@ -30,7 +30,8 @@ const userSchema = new mongoose.Schema({
   taxCode: { type: String, trim: true, maxlength: 30 },
   addresses: { type: [addressSchema], default: [] },
   tokenVersion: { type: Number, default: 0, select: false },
-  lastLoginAt: Date
+  lastLoginAt: Date,
+  emailVerifiedAt: Date
 }, { timestamps: true });
 
 userSchema.methods.verifyPassword = function verifyPassword(password) {

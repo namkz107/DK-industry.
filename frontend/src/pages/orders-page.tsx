@@ -34,20 +34,27 @@ export function OrdersPage() {
       void queryClient.invalidateQueries({ queryKey: ["customer", "summary"] })
     },
   })
+  const afterSales = useMutation({
+    mutationFn: ({ id, type, reason }: { id: string; type: "return" | "warranty" | "complaint"; reason: string }) => customerClient.createAfterSales(id, { type, reason }),
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["customer", "orders"] }),
+  })
   const createdCode = (location.state as { createdCode?: string } | null)?.createdCode
 
   return <CustomerShell title="Đơn hàng của tôi" description="Theo dõi xác nhận kho, thanh toán và hành trình giao hàng rõ ràng theo từng bước.">
     {createdCode && <p role="status" className="mb-5 flex items-center gap-3 rounded-2xl bg-emerald-50 p-4 font-semibold text-emerald-800"><CheckCircle2 className="size-5"/>Đã tạo đơn {createdCode}. Nhân viên sẽ sớm xác nhận tồn kho.</p>}
     {orders.isLoading ? <Loading/> : orders.error ? <ErrorText error={orders.error}/> : !orders.data?.data.length ? <Empty/> :
-      <div className="space-y-5">{orders.data.data.map(order => <OrderCard key={order._id} order={order} busy={cancel.isPending} onCancel={(reason) => cancel.mutate({ id: order._id, reason })}/>)}</div>}
-    {cancel.error && <ErrorText error={cancel.error}/>}
+      <div className="space-y-5">{orders.data.data.map(order => <OrderCard key={order._id} order={order} busy={cancel.isPending || afterSales.isPending} onCancel={(reason) => cancel.mutate({ id: order._id, reason })} onAfterSales={(type, reason) => afterSales.mutate({ id: order._id, type, reason })}/>)}</div>}
+    {(cancel.error || afterSales.error) && <ErrorText error={(cancel.error || afterSales.error) as Error}/>}
     <div className="mt-6 flex items-start gap-3 rounded-2xl bg-blue-50 p-4 text-sm leading-6 text-blue-900"><Truck className="mt-0.5 size-5 shrink-0"/><p>Phí và lịch giao chính thức được cập nhật sau khi nhân viên kiểm tra kích thước, khối lượng, tồn kho và địa điểm nhận hàng.</p></div>
   </CustomerShell>
 }
 
-function OrderCard({ order, busy, onCancel }: { order: CustomerOrder; busy: boolean; onCancel: (reason: string) => void }) {
+function OrderCard({ order, busy, onCancel, onAfterSales }: { order: CustomerOrder; busy: boolean; onCancel: (reason: string) => void; onAfterSales: (type: "return" | "warranty" | "complaint", reason: string) => void }) {
   const [cancelling, setCancelling] = useState(false)
   const [reason, setReason] = useState("")
+  const [afterSalesOpen, setAfterSalesOpen] = useState(false)
+  const [afterSalesType, setAfterSalesType] = useState<"return" | "warranty" | "complaint">("warranty")
+  const [afterSalesReason, setAfterSalesReason] = useState("")
   const status = statuses[order.status] || { label: order.status, className: "bg-slate-100 text-slate-700" }
   const address = [order.shippingAddress.addressLine, order.shippingAddress.ward, order.shippingAddress.district, order.shippingAddress.province].filter(Boolean).join(", ")
 
@@ -66,6 +73,8 @@ function OrderCard({ order, busy, onCancel }: { order: CustomerOrder; busy: bool
           <ol className="space-y-3">{order.timeline.map((item, index) => <li className="flex gap-3 text-sm" key={`${item.at}-${index}`}><span className="mt-1 size-2 shrink-0 rounded-full bg-orange-500"/><div><strong className="text-slate-800">{statuses[item.status]?.label || item.status}</strong>{item.message && <p className="mt-1 leading-5 text-slate-500">{item.message}</p>}<time className="mt-1 block text-xs text-slate-400">{dateTime(item.at)}</time></div></li>)}</ol>
         </div>
       </details>
+      {order.afterSalesRequests?.map(item => <div className="mt-4 rounded-2xl border border-blue-100 bg-blue-50 p-4 text-sm" key={item._id}><strong className="text-blue-900">Hậu mãi: {item.type === "warranty" ? "Bảo hành" : item.type === "return" ? "Đổi / trả" : "Khiếu nại"} · {item.status}</strong><p className="mt-1 text-slate-600">{item.reason}</p>{item.resolution && <p className="mt-2 font-semibold text-blue-900">Kết quả: {item.resolution}</p>}</div>)}
+      {order.status === "delivered" && !order.afterSalesRequests?.some(item => !["rejected", "resolved"].includes(item.status)) && (afterSalesOpen ? <div className="mt-4 rounded-2xl border border-blue-100 bg-blue-50 p-4"><label className="block text-sm font-bold text-blue-900">Loại yêu cầu<select className="field-select mt-2 bg-white" value={afterSalesType} onChange={event => setAfterSalesType(event.target.value as typeof afterSalesType)}><option value="warranty">Bảo hành</option><option value="return">Đổi / trả</option><option value="complaint">Khiếu nại</option></select></label><label className="mt-3 block text-sm font-bold text-blue-900">Mô tả vấn đề<Textarea className="mt-2 bg-white text-slate-900" value={afterSalesReason} onChange={event => setAfterSalesReason(event.target.value)} placeholder="Mô tả lỗi, tình trạng hàng và mong muốn xử lý"/></label><div className="mt-3 flex gap-2"><Button disabled={busy || afterSalesReason.trim().length < 10} onClick={() => onAfterSales(afterSalesType, afterSalesReason.trim())}>Gửi yêu cầu</Button><Button variant="outline" onClick={() => setAfterSalesOpen(false)}>Đóng</Button></div></div> : <Button className="mt-4" variant="outline" onClick={() => setAfterSalesOpen(true)}>Yêu cầu bảo hành / đổi trả</Button>)}
       {order.status === "pending" && (cancelling ? <div className="mt-4 rounded-2xl border border-red-100 bg-red-50 p-4"><label className="text-sm font-bold text-red-900">Lý do hủy đơn<Textarea className="mt-2 bg-white text-slate-900" value={reason} onChange={event => setReason(event.target.value)} placeholder="Ví dụ: Tôi đặt nhầm số lượng sản phẩm"/></label><div className="mt-3 flex flex-wrap gap-2"><Button variant="destructive" disabled={busy || reason.trim().length < 5} onClick={() => onCancel(reason.trim())}><XCircle className="size-5"/>Xác nhận hủy</Button><Button variant="outline" disabled={busy} onClick={() => { setCancelling(false); setReason("") }}>Giữ lại đơn</Button></div></div> : <Button className="mt-4" variant="ghost" onClick={() => setCancelling(true)}><XCircle className="size-5 text-red-600"/>Yêu cầu hủy đơn</Button>)}
     </div>
   </article>

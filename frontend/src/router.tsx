@@ -11,10 +11,16 @@ export const router = createBrowserRouter([{ element: <AppLayout />, children: [
   { path: "/dich-vu", lazy: async () => { const module = await import("@/pages/services-page"); return { Component: module.ServicesPage } } },
   { path: "/du-an", lazy: async () => { const module = await import("@/pages/projects-page"); return { Component: module.ProjectsPage } } },
   { path: "/san-pham", lazy: async () => { const module = await import("@/pages/products-page"); return { Component: module.ProductsPage } } },
+  { path: "/san-pham/:slug", lazy: async () => { const module = await import("@/pages/product-detail-page"); return { Component: module.ProductDetailPage } } },
   { path: "/lien-he", lazy: async () => { const module = await import("@/pages/contact-page"); return { Component: module.ContactPage } } },
+  { path: "/chinh-sach/:slug", lazy: async () => { const module = await import("@/pages/policy-page"); return { Component: module.PolicyPage } } },
   { path: "/dang-nhap", lazy: async () => { const module = await import("@/pages/login-page"); return { Component: module.LoginPage } } },
   { path: "/dang-ky", lazy: async () => { const module = await import("@/pages/register-page"); return { Component: module.RegisterPage } } },
+  { path: "/quen-mat-khau", lazy: async () => { const module = await import("@/pages/account-recovery-page"); return { Component: module.ForgotPasswordPage } } },
+  { path: "/dat-lai-mat-khau", lazy: async () => { const module = await import("@/pages/account-recovery-page"); return { Component: module.ResetPasswordPage } } },
+  { path: "/xac-minh-email", lazy: async () => { const module = await import("@/pages/account-recovery-page"); return { Component: module.VerifyEmailPage } } },
   { element: <RequireAuth />, children: [
+    { path: "/thong-bao", lazy: async () => { const module = await import("@/pages/notifications-page"); return { Component: module.NotificationsPage } } },
     { path: "/tai-khoan", lazy: async () => { const module = await import("@/pages/account-page"); return { Component: module.AccountPage } } },
     { element: <RequireCustomer />, children: [
       { path: "/tai-khoan/ho-so", lazy: async () => { const module = await import("@/pages/customer-profile-page"); return { Component: module.CustomerProfilePage } } },
@@ -26,6 +32,7 @@ export const router = createBrowserRouter([{ element: <AppLayout />, children: [
       { path: "/staff", lazy: async () => { const module = await import("@/pages/staff-dashboard-page"); return { Component: module.StaffDashboardPage } } },
       { path: "/staff/leads", lazy: async () => { const module = await import("@/pages/staff-leads-page"); return { Component: module.StaffLeadsPage } } },
       { path: "/staff/requests", lazy: async () => { const module = await import("@/pages/staff-requests-page"); return { Component: module.StaffRequestsPage } } },
+      { path: "/staff/work-orders", lazy: async () => { const module = await import("@/pages/staff-work-orders-page"); return { Component: module.StaffWorkOrdersPage } } },
       { path: "/staff/orders", lazy: async () => { const module = await import("@/pages/staff-orders-page"); return { Component: module.StaffOrdersPage } } },
     ] },
     { element: <RequireAdmin />, children: [

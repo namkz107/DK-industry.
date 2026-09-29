@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { Banknote, CalendarClock, CheckCircle2, History, MapPin, Navigation, PackageCheck, Phone, Search, Truck, UserCheck } from "lucide-react"
+import { Banknote, CalendarClock, CheckCircle2, History, MapPin, Navigation, PackageCheck, Phone, Search, Truck, UserCheck, Wrench } from "lucide-react"
 import { useEffect, useState, type FormEvent, type ReactNode } from "react"
 import { useSearchParams } from "react-router-dom"
 import { StaffShell } from "@/components/staff/staff-shell"
@@ -32,6 +32,7 @@ export function StaffOrdersPage() {
     void client.invalidateQueries({ queryKey: ["staff", "dashboard"] })
   }
   const update = useMutation({ mutationFn: (body: Parameters<typeof staffClient.updateOrder>[1]) => staffClient.updateOrder(selected, body), onSuccess: refresh })
+  const afterSales = useMutation({ mutationFn: ({ requestId, status, resolution }: { requestId: string; status: string; resolution?: string }) => staffClient.updateAfterSales(selected, requestId, { status, resolution }), onSuccess: refresh })
 
   return <StaffShell title="Đơn hàng thương mại" description="Xử lý tuần tự từ xác nhận tồn kho đến giao hàng và đối soát thanh toán.">
     <div className="mb-5 grid gap-3 rounded-2xl border bg-white p-4 md:grid-cols-[1fr_180px_180px_170px]">
@@ -42,15 +43,17 @@ export function StaffOrdersPage() {
     </div>
     <div className="grid gap-5 xl:grid-cols-[390px_1fr]">
       <div className="space-y-3">{list.data?.data.items.map(item => <button key={item._id} onClick={() => setSelected(item._id)} className={cn("w-full rounded-2xl border bg-white p-5 text-left shadow-sm transition hover:border-orange-300", selected === item._id && "border-orange-500 ring-2 ring-orange-100")}><div className="flex justify-between gap-3"><strong className="text-lg text-emerald-950">{item.code}</strong><span className="text-sm font-black text-orange-700">{money.format(item.total)}</span></div><p className="mt-2 text-slate-700">{item.shippingAddress.recipientName}</p><div className="mt-3 flex justify-between gap-2 text-sm"><span className="font-bold text-emerald-700">{statusNames[item.status]}</span><span className="text-slate-500">{new Date(item.createdAt).toLocaleDateString("vi-VN")}</span></div><p className="mt-2 text-xs font-semibold text-slate-500">{paymentNames[item.paymentStatus]}</p></button>)}{list.isLoading && <p className="rounded-2xl bg-white p-5">Đang tải đơn hàng...</p>}{!list.isLoading && !list.data?.data.items.length && <p className="rounded-2xl bg-white p-6 text-center text-slate-500">Không có đơn phù hợp.</p>}</div>
-      {detail.data?.data ? <OrderDetail order={detail.data.data} busy={update.isPending} success={update.isSuccess} error={update.error as Error | null} onUpdate={body => update.mutate(body)}/> : <div className="rounded-3xl border bg-white p-10 text-center text-slate-500">Chọn một đơn hàng để xử lý.</div>}
+      {detail.data?.data ? <OrderDetail order={detail.data.data} busy={update.isPending || afterSales.isPending} success={update.isSuccess || afterSales.isSuccess} error={(update.error || afterSales.error) as Error | null} onUpdate={body => update.mutate(body)} onAfterSales={(requestId, status, resolution) => afterSales.mutate({ requestId, status, resolution })}/> : <div className="rounded-3xl border bg-white p-10 text-center text-slate-500">Chọn một đơn hàng để xử lý.</div>}
     </div>
   </StaffShell>
 }
 
-function OrderDetail({ order, busy, success, error, onUpdate }: { order: StaffOrder; busy: boolean; success: boolean; error: Error | null; onUpdate: (body: Parameters<typeof staffClient.updateOrder>[1]) => void }) {
+function OrderDetail({ order, busy, success, error, onUpdate, onAfterSales }: { order: StaffOrder; busy: boolean; success: boolean; error: Error | null; onUpdate: (body: Parameters<typeof staffClient.updateOrder>[1]) => void; onAfterSales: (requestId: string, status: string, resolution?: string) => void }) {
   const [nextStatus, setNextStatus] = useState("")
   const [paymentStatus, setPaymentStatus] = useState("")
   const [message, setMessage] = useState("")
+  const [amountPaid, setAmountPaid] = useState(String(order.total))
+  const [paymentReference, setPaymentReference] = useState(order.paymentReference || "")
   const [internalNote, setInternalNote] = useState(order.internalNote || "")
   const [shippingFee, setShippingFee] = useState(String(order.shippingFee || 0))
   const [shippingProvider, setShippingProvider] = useState(order.shippingProvider || "")
@@ -58,11 +61,11 @@ function OrderDetail({ order, busy, success, error, onUpdate }: { order: StaffOr
   const [estimatedDeliveryAt, setEstimatedDeliveryAt] = useState(order.estimatedDeliveryAt?.slice(0, 16) || "")
 
   useEffect(() => {
-    setNextStatus(""); setPaymentStatus(""); setMessage(""); setInternalNote(order.internalNote || "")
+    setNextStatus(""); setPaymentStatus(""); setMessage(""); setAmountPaid(String(order.total)); setPaymentReference(order.paymentReference || ""); setInternalNote(order.internalNote || "")
     setShippingFee(String(order.shippingFee || 0)); setShippingProvider(order.shippingProvider || ""); setTrackingCode(order.trackingCode || ""); setEstimatedDeliveryAt(order.estimatedDeliveryAt?.slice(0, 16) || "")
   }, [order])
 
-  const allowedPayments = paymentTransitions[order.paymentStatus].filter(status => status !== "refund_pending" || order.status === "cancelled")
+  const allowedPayments = paymentTransitions[order.paymentStatus].filter(status => (status !== "refund_pending" || order.status === "cancelled") && !(status === "paid" && order.paymentMethod === "cod"))
   const directionsUrl = order.shippingAddress.latitude !== undefined && order.shippingAddress.longitude !== undefined
     ? `https://www.google.com/maps/dir/?api=1&destination=${order.shippingAddress.latitude},${order.shippingAddress.longitude}${order.shippingAddress.placeId ? `&destination_place_id=${encodeURIComponent(order.shippingAddress.placeId)}` : ""}`
     : ""
@@ -70,7 +73,11 @@ function OrderDetail({ order, busy, success, error, onUpdate }: { order: StaffOr
     event.preventDefault()
     const body: Parameters<typeof staffClient.updateOrder>[1] = { message }
     if (nextStatus) body.status = nextStatus as OrderStatus
-    if (paymentStatus) body.paymentStatus = paymentStatus as PaymentStatus
+    if (paymentStatus) {
+      body.paymentStatus = paymentStatus as PaymentStatus
+      if (paymentStatus === "paid") { body.amountPaid = Number(amountPaid); body.paymentReference = paymentReference }
+      if (paymentStatus === "refunded") body.paymentReference = paymentReference
+    }
     onUpdate(body)
   }
 
@@ -84,7 +91,7 @@ function OrderDetail({ order, busy, success, error, onUpdate }: { order: StaffOr
 
     <Section icon={<Truck/>} title="Giao vận và chi phí">
       <form className="grid gap-3 md:grid-cols-2" onSubmit={event => { event.preventDefault(); const body: Parameters<typeof staffClient.updateOrder>[1] = { shippingProvider, trackingCode, estimatedDeliveryAt }; if (["pending", "confirmed", "preparing"].includes(order.status)) body.shippingFee = Number(shippingFee); onUpdate(body) }}>
-        <Field label="Phí vận chuyển (VND)"><Input type="number" min="0" step="1000" disabled={["shipping", "delivered", "cancelled"].includes(order.status)} value={shippingFee} onChange={event => setShippingFee(event.target.value)}/></Field>
+        <Field label="Phí vận chuyển (VND)"><Input type="number" min="0" step="1000" disabled={Boolean(order.paymentLockedAt) || ["shipping", "delivered", "cancelled"].includes(order.status)} value={shippingFee} onChange={event => setShippingFee(event.target.value)}/></Field>
         <Field label="Đơn vị / hình thức vận chuyển"><Input value={shippingProvider} onChange={event => setShippingProvider(event.target.value)} placeholder="Ví dụ: Viettel Post hoặc xe công ty"/></Field>
         <Field label="Mã vận đơn"><Input value={trackingCode} onChange={event => setTrackingCode(event.target.value)} placeholder="Có thể để trống nếu giao xe công ty"/></Field>
         <Field label="Thời gian giao dự kiến"><Input type="datetime-local" value={estimatedDeliveryAt} onChange={event => setEstimatedDeliveryAt(event.target.value)}/></Field>
@@ -93,11 +100,13 @@ function OrderDetail({ order, busy, success, error, onUpdate }: { order: StaffOr
     </Section>
 
     <Section icon={<PackageCheck/>} title="Bước xử lý tiếp theo">
-      {!nextStatuses[order.status].length && !allowedPayments.length ? <p className="rounded-xl bg-slate-50 p-4 text-sm text-slate-600">Đơn hàng đã kết thúc, không còn bước xử lý tiếp theo.</p> : <form className="grid gap-3 lg:grid-cols-[210px_210px_1fr_auto]" onSubmit={submitProgress}>
+      {!nextStatuses[order.status].length && !allowedPayments.length ? <p className="rounded-xl bg-slate-50 p-4 text-sm text-slate-600">Đơn hàng đã kết thúc, không còn bước xử lý tiếp theo.</p> : <form className="grid gap-3 lg:grid-cols-2" onSubmit={submitProgress}>
         <Filter value={nextStatus} onChange={setNextStatus} first="Không đổi tiến trình" options={nextStatuses[order.status].map(status => [status, statusNames[status]])}/>
         <Filter value={paymentStatus} onChange={setPaymentStatus} first="Không đổi thanh toán" options={allowedPayments.map(status => [status, paymentNames[status]])}/>
+        {paymentStatus === "paid" && <><Field label="Số tiền thực nhận"><Input type="number" min="0" step="1000" value={amountPaid} onChange={event => setAmountPaid(event.target.value)}/></Field><Field label="Mã / nội dung giao dịch"><Input value={paymentReference} onChange={event => setPaymentReference(event.target.value)} placeholder="Ví dụ: FT24200123456"/></Field></>}
+        {paymentStatus === "refunded" && <Field label="Mã giao dịch hoàn tiền"><Input value={paymentReference} onChange={event => setPaymentReference(event.target.value)} placeholder="Mã đối soát hoàn tiền"/></Field>}
         <Input value={message} onChange={event => setMessage(event.target.value)} placeholder={nextStatus === "cancelled" ? "Bắt buộc nhập lý do hủy" : "Nội dung khách hàng sẽ nhìn thấy"}/>
-        <Button disabled={busy || (!nextStatus && !paymentStatus) || (nextStatus === "cancelled" && message.trim().length < 5)}>Cập nhật</Button>
+        <Button disabled={busy || (!nextStatus && !paymentStatus) || (nextStatus === "cancelled" && message.trim().length < 5) || (paymentStatus === "paid" && order.paymentMethod === "bank_transfer" && paymentReference.trim().length < 3)}>Cập nhật</Button>
       </form>}
       {order.paymentMethod === "bank_transfer" && order.paymentStatus !== "paid" && <p className="mt-3 flex items-center gap-2 text-sm text-amber-700"><Banknote className="size-4"/>Đơn chuyển khoản phải được xác nhận “Đã thanh toán” trước khi xuất giao.</p>}
     </Section>
@@ -106,6 +115,7 @@ function OrderDetail({ order, busy, success, error, onUpdate }: { order: StaffOr
       <div className="grid gap-6 md:grid-cols-2"><Timeline title="Tiến trình đơn hàng" entries={order.timeline.map(item => ({ label: statusNames[item.status as OrderStatus] || item.status, message: item.message, at: item.at }))}/><Timeline title="Đối soát thanh toán" entries={(order.paymentTimeline || []).map(item => ({ label: paymentNames[item.status], message: item.message, at: item.at }))}/></div>
     </Section>
 
+    {order.afterSalesRequests?.length ? <Section icon={<Wrench/>} title="Bảo hành, đổi trả và khiếu nại"><div className="space-y-4">{order.afterSalesRequests.map(item => <AfterSalesItem key={item._id} item={item} busy={busy} onUpdate={(status, resolution) => onAfterSales(item._id, status, resolution)}/>)}</div></Section> : null}
     {error && <p role="alert" className="mt-4 rounded-xl bg-red-50 p-4 font-semibold text-red-700">{error.message}</p>}
     {success && !busy && <p role="status" className="mt-4 flex items-center gap-2 rounded-xl bg-emerald-50 p-4 font-semibold text-emerald-800"><CheckCircle2 className="size-5"/>Đã lưu thay đổi.</p>}
     <div className="mt-6"><label className="text-sm font-bold text-slate-700">Ghi chú nội bộ<Textarea className="mt-2" value={internalNote} onChange={event => setInternalNote(event.target.value)} placeholder="Thông tin kho, hóa đơn VAT, vận chuyển..."/></label><Button className="mt-3" variant="outline" disabled={busy} onClick={() => onUpdate({ internalNote })}>Lưu ghi chú</Button></div>
@@ -114,5 +124,6 @@ function OrderDetail({ order, busy, success, error, onUpdate }: { order: StaffOr
 
 function Section({ icon, title, children }: { icon: ReactNode; title: string; children: ReactNode }) { return <section className="mt-7 border-t border-slate-200 pt-6"><h3 className="mb-4 flex items-center gap-2 font-display text-xl font-bold text-emerald-950"><span className="grid size-9 place-items-center rounded-xl bg-orange-50 text-orange-700 [&>svg]:size-5">{icon}</span>{title}</h3>{children}</section> }
 function Field({ label, children }: { label: string; children: ReactNode }) { return <label className="text-sm font-bold text-slate-700">{label}<span className="mt-2 block">{children}</span></label> }
+function AfterSalesItem({ item, busy, onUpdate }: { item: NonNullable<StaffOrder["afterSalesRequests"]>[number]; busy: boolean; onUpdate: (status: string, resolution?: string) => void }) { const options: Record<string, string[]> = { submitted: ["reviewing", "rejected"], reviewing: ["approved", "rejected"], approved: ["received", "resolved"], received: ["resolved"], rejected: [], resolved: [] }; const [status, setStatus] = useState(""); const [resolution, setResolution] = useState(item.resolution || ""); return <div className="rounded-2xl border bg-slate-50 p-4"><strong className="text-emerald-950">{item.type === "warranty" ? "Bảo hành" : item.type === "return" ? "Đổi / trả" : "Khiếu nại"} · {item.status}</strong><p className="mt-2 text-sm text-slate-600">{item.reason}</p>{options[item.status]?.length > 0 && <div className="mt-3 grid gap-3 sm:grid-cols-[190px_1fr_auto]"><Filter value={status} onChange={setStatus} first="Chọn bước xử lý" options={options[item.status].map(value => [value, value])}/><Input value={resolution} onChange={event => setResolution(event.target.value)} placeholder="Kết quả / hướng xử lý"/><Button disabled={busy || !status || (["rejected", "resolved"].includes(status) && resolution.trim().length < 5)} onClick={() => onUpdate(status, resolution.trim())}>Cập nhật</Button></div>}</div> }
 function Timeline({ title, entries }: { title: string; entries: Array<{ label: string; message?: string; at: string }> }) { return <div><h4 className="mb-3 font-bold text-slate-800">{title}</h4>{entries.length ? <ol className="space-y-3">{entries.map((item, index) => <li className="flex gap-3 text-sm" key={`${item.at}-${index}`}><span className="mt-1.5 size-2 shrink-0 rounded-full bg-orange-500"/><div><strong>{item.label}</strong>{item.message && <p className="mt-1 text-slate-500">{item.message}</p>}<time className="mt-1 flex items-center gap-1 text-xs text-slate-400"><CalendarClock className="size-3"/>{new Date(item.at).toLocaleString("vi-VN")}</time></div></li>)}</ol> : <p className="text-sm text-slate-400">Chưa có cập nhật.</p>}</div> }
 function Filter({ value, onChange, first, options }: { value: string; onChange: (value: string) => void; first: string; options: string[][] }) { return <select className="field-select" value={value} onChange={event => onChange(event.target.value)}><option value="">{first}</option>{options.map(([key, label]) => <option value={key} key={key}>{label}</option>)}</select> }

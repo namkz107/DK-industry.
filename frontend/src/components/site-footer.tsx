@@ -8,7 +8,13 @@ const serviceLinks = [
   ["Gia công cơ khí chính xác", "gia-cong-co-khi-chinh-xac"],
   ["Thiết kế & chế tạo Jig", "thiet-ke-che-tao-jig"],
 ]
-const supportItems = ["Chính sách bảo mật", "Chính sách giao hàng", "Hình thức thanh toán", "Cam kết chất lượng"]
+const supportItems = [
+  ["Chính sách bảo mật", "/chinh-sach/bao-mat"],
+  ["Chính sách giao hàng", "/chinh-sach/giao-hang"],
+  ["Hình thức thanh toán", "/chinh-sach/thanh-toan"],
+  ["Bảo hành & đổi trả", "/chinh-sach/bao-hanh-doi-tra"],
+  ["Điều khoản giao dịch", "/chinh-sach/dieu-khoan"],
+]
 
 export function SiteFooter() {
   return <footer className="relative overflow-hidden bg-[#101312] text-white">
@@ -16,7 +22,7 @@ export function SiteFooter() {
     <div className="container-page relative grid gap-x-12 gap-y-12 py-16 sm:grid-cols-2 lg:grid-cols-[1.3fr_1fr_1fr_1.2fr] lg:py-20">
       <section><h2 className="footer-title">Về Cơ khí Đăng Khoa</h2><p className="mt-8 font-display text-base font-bold uppercase tracking-wide text-slate-300">{company.name}</p><address className="mt-5 not-italic text-[15px] leading-8 text-slate-400"><strong className="font-semibold text-slate-300">Trụ sở & nhà xưởng:</strong><br/>{company.address}</address><div className="mt-4 flex flex-wrap gap-x-5 gap-y-2"><Link className="text-sm font-bold text-orange-400 hover:text-orange-300" to="/lien-he">Xem thông tin liên hệ</Link><a className="text-sm font-bold text-orange-400 hover:text-orange-300" href={companyMapUrl} target="_blank" rel="noreferrer">Chỉ đường</a></div></section>
       <section><h2 className="footer-title">Dịch vụ nổi bật</h2><ul className="mt-7 space-y-4">{serviceLinks.map(([item,slug]) => <li key={item}><Link className="footer-link" to={`/dich-vu#${slug}`}><ChevronRight className="size-4 shrink-0 text-orange-500"/>{item}</Link></li>)}</ul></section>
-      <section><h2 className="footer-title">Hỗ trợ khách hàng</h2><ul className="mt-7 space-y-4">{supportItems.map(item => <li className="footer-link" key={item}><ChevronRight className="size-4 shrink-0 text-orange-500"/>{item}</li>)}</ul></section>
+      <section><h2 className="footer-title">Hỗ trợ khách hàng</h2><ul className="mt-7 space-y-4">{supportItems.map(([item, href]) => <li key={href}><Link className="footer-link" to={href}><ChevronRight className="size-4 shrink-0 text-orange-500"/>{item}</Link></li>)}</ul></section>
       <section><h2 className="footer-title">Liên hệ</h2><div className="mt-7 space-y-5 text-[15px] leading-7 text-slate-400"><a className="footer-contact" href={`tel:${company.phone}`}><Phone className="size-5 shrink-0 text-orange-500"/><span><strong>Hotline</strong><br/>{company.phoneLabel}</span></a><a className="footer-contact" href={`mailto:${company.email}`}><Mail className="size-5 shrink-0 text-orange-500"/><span><strong>Email</strong><br/>{company.email}</span></a><div className="footer-contact"><MapPin className="size-5 shrink-0 text-orange-500"/><span><strong>Khu vực phục vụ</strong><br/>Hà Nội và các tỉnh miền Bắc</span></div></div></section>
     </div>
     <div className="relative border-t border-white/10"><div className="container-page flex flex-col gap-2 py-5 text-xs text-slate-500 sm:flex-row sm:items-center sm:justify-between"><span>© 2026 CTY CPTV ĐẦU TƯ XD TM ĐĂNG KHOA. Bảo lưu mọi quyền.</span><span>Thiết kế cho ngành công nghiệp Việt Nam.</span></div></div>

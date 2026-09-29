@@ -10,7 +10,7 @@ Website giới thiệu năng lực, dự án và sản phẩm dành cho doanh ng
 - CRUD API cho dự án và sản phẩm; thống kê CRM mini cho dashboard.
 - Danh mục dịch vụ cơ khí thực tế: laser CNC, chấn gấp, gia công chính xác, Jig, hàn và hệ thống công nghiệp.
 - Rate limiting và kiểm tra khóa nguy hiểm để hạn chế spam form/MongoDB injection.
-- Dữ liệu fallback ở frontend và script seed MongoDB để chạy demo nhanh.
+- Script seed MongoDB để tạo dữ liệu phát triển; giao diện production không tự thay dữ liệu thật bằng dữ liệu demo khi API lỗi.
 - Authentication cho Customer, Staff và Admin bằng access token ngắn hạn + refresh cookie HttpOnly.
 - Phân quyền API: Staff xử lý dashboard/lead; chỉ Admin được thay đổi hoặc xóa nội dung hệ thống.
 - Trung tâm Customer: hồ sơ, tối đa 5 địa chỉ, giỏ hàng MongoDB, đặt/hủy đơn, lịch sử trạng thái và yêu cầu gia công kèm bản vẽ riêng tư.
@@ -67,7 +67,7 @@ Mở `backend/.env`, thay `JWT_SECRET` bằng chuỗi ngẫu nhiên dài và đ�
 
 Đăng ký công khai luôn tạo role `customer`, kể cả khi request cố gửi `role: admin`. Tài khoản Staff/Admin chỉ được cấp bởi Admin hoặc script bootstrap đáng tin cậy.
 
-Nếu chưa bật MongoDB/backend, frontend vẫn sử dụng dữ liệu mẫu để xem giao diện. Form chỉ được lưu thật khi API hoạt động.
+Frontend hiển thị đúng trạng thái trống hoặc lỗi khi MongoDB/backend chưa hoạt động, tránh khiến người dùng nhầm dữ liệu demo là dữ liệu thật. Chạy `npm run seed` khi cần dữ liệu phát triển.
 
 ### Cấu hình bản đồ và định vị
 
@@ -123,3 +123,4 @@ Kiến trúc, luồng sử dụng và checklist production của Authentication 
 Nghiệp vụ Customer, trạng thái và kịch bản kiểm tra nằm tại [`docs/CUSTOMER.md`](docs/CUSTOMER.md).
 Luồng Lead và Service Request nằm tại [`docs/LEAD-SERVICE-REQUEST.md`](docs/LEAD-SERVICE-REQUEST.md).
 Quyền hạn, workflow và kịch bản kiểm tra Staff nằm tại [`docs/STAFF.md`](docs/STAFF.md).
+Checklist cấu hình, vận hành và các tích hợp ngoài hệ thống trước khi go-live nằm tại [`docs/PRODUCTION.md`](docs/PRODUCTION.md).

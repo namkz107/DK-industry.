@@ -1,4 +1,4 @@
-import { ClipboardList, LayoutDashboard, LogOut, PackageCheck, UsersRound } from "lucide-react"
+import { ClipboardList, Factory, LayoutDashboard, LogOut, PackageCheck, UsersRound } from "lucide-react"
 import type { PropsWithChildren, ReactNode } from "react"
 import { NavLink, useNavigate } from "react-router-dom"
 import { Button } from "@/components/ui/button"
@@ -9,6 +9,7 @@ const navigation = [
   { to: "/staff", label: "Tổng quan", icon: LayoutDashboard, end: true },
   { to: "/staff/leads", label: "Khách tiềm năng", icon: UsersRound },
   { to: "/staff/requests", label: "Yêu cầu dịch vụ", icon: ClipboardList },
+  { to: "/staff/work-orders", label: "Công việc", icon: Factory },
   { to: "/staff/orders", label: "Đơn hàng", icon: PackageCheck },
 ]
 

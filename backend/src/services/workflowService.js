@@ -66,11 +66,11 @@ function transitionOrder(order, nextStatus, { actor, actorType = 'staff', messag
   return order;
 }
 
-function transitionPayment(order, nextStatus, { actor, message = '' } = {}) {
+function transitionPayment(order, nextStatus, { actor, message = '', amount, reference } = {}) {
   if (order.paymentStatus === nextStatus) return order;
   assertTransition(paymentTransitions, order.paymentStatus, nextStatus, 'Payment');
   order.paymentStatus = nextStatus;
-  order.paymentTimeline.push({ status: nextStatus, message, actor });
+  order.paymentTimeline.push({ status: nextStatus, message, actor, amount, reference });
   if (nextStatus === 'paid') order.paidAt = new Date();
   if (nextStatus === 'refunded') order.refundedAt = new Date();
   return order;

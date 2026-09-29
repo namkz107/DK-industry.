@@ -1,6 +1,7 @@
 export interface Product {
   _id: string
   name: string
+  slug?: string
   category: string
   description?: string
   price?: number | null
@@ -9,6 +10,8 @@ export interface Product {
   stock?: number
   priceOnRequest?: boolean
   sku?: string
+  images?: string[]
+  specifications?: Record<string, string>
 }
 
 export interface Project {

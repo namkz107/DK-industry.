@@ -3,6 +3,6 @@ import { useAuth } from "@/contexts/auth-context"
 
 export function RequireStaff() {
   const { user } = useAuth()
-  if (user?.role === "staff") return <Outlet/>
-  return <Navigate to={user?.role === "admin" ? "/admin" : "/tai-khoan"} replace/>
+  if (user?.role === "staff" || user?.role === "admin") return <Outlet/>
+  return <Navigate to="/tai-khoan" replace/>
 }

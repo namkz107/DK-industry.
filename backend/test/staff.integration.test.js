@@ -47,6 +47,7 @@ test('Staff xử lý Lead, Service Request, trao đổi và báo giá đúng quy
     users.push(customer._id, staff._id, otherStaff._id);
     const customerToken = createAccessToken(customer, new mongoose.Types.ObjectId());
     const staffToken = createAccessToken(staff, new mongoose.Types.ObjectId());
+    const otherStaffToken = createAccessToken(otherStaff, new mongoose.Types.ObjectId());
 
     lead = await Lead.create({ name: 'Lead Staff Test', phone: '0901234567', email: `lead-${suffix}@example.com`, serviceType: 'Gia công CNC', message: 'Cần tư vấn gia công.', consent: true });
     serviceRequest = await ServiceRequest.create({
@@ -58,7 +59,7 @@ test('Staff xử lý Lead, Service Request, trao đổi và báo giá đúng quy
     order = await Order.create({
       code: `DH-STAFF-${suffix}`, customer: customer._id, items: [{ product: product._id, name: product.name, sku: product.sku, unit: product.unit, price: product.price, quantity: 2, lineTotal: 500000 }],
       shippingAddress: { recipientName: customer.name, phone: customer.phone, addressLine: 'Cụm 3, Duyên Trường', district: 'Thường Tín', province: 'Hà Nội' },
-      subtotal: 500000, total: 500000, timeline: [{ status: 'pending', message: 'Đơn mới.' }]
+      subtotal: 500000, total: 500000, paymentMethod: 'bank_transfer', termsAcceptedAt: new Date(), termsVersion: 'test', timeline: [{ status: 'pending', message: 'Đơn mới.' }]
     });
 
     const customerForbidden = await call('/staff/dashboard', customerToken);
@@ -74,6 +75,8 @@ test('Staff xử lý Lead, Service Request, trao đổi và báo giá đúng quy
 
     const assignOther = await call(`/staff/leads/${lead._id}`, staffToken, { method: 'PATCH', body: JSON.stringify({ assignedTo: otherStaff._id }) });
     assert.equal(assignOther.status, 403);
+    const otherCannotEditOwnedLead = await call(`/staff/leads/${lead._id}`, otherStaffToken, { method: 'PATCH', body: JSON.stringify({ priority: 'urgent' }) });
+    assert.equal(otherCannotEditOwnedLead.status, 409);
 
     const review = await call(`/staff/requests/${serviceRequest._id}`, staffToken, { method: 'PATCH', body: JSON.stringify({ assignedTo: 'me', priority: 'urgent', status: 'reviewing', message: 'Kỹ thuật bắt đầu kiểm tra bản vẽ.' }) });
     assert.equal(review.status, 200);
@@ -95,9 +98,11 @@ test('Staff xử lý Lead, Service Request, trao đổi và báo giá đúng quy
     assert.equal(customerBody.data.messages.some(item => item.visibility === 'internal'), false);
     assert.ok(customerBody.data.messages.some(item => item.content.includes(quoteBody.data.code)));
 
-    const confirmOrder = await call(`/staff/orders/${order._id}`, staffToken, { method: 'PATCH', body: JSON.stringify({ assignedTo: 'me', status: 'confirmed', paymentStatus: 'paid', message: 'Đã kiểm tra tồn kho.' }) });
+    const confirmOrder = await call(`/staff/orders/${order._id}`, staffToken, { method: 'PATCH', body: JSON.stringify({ assignedTo: 'me', status: 'confirmed', paymentStatus: 'paid', amountPaid: 500000, paymentReference: 'FT-ORDER-TEST', message: 'Đã kiểm tra tồn kho.' }) });
     assert.equal(confirmOrder.status, 200);
     assert.equal((await Product.findById(product._id)).stock, 3);
+    const lockedTotal = await call(`/staff/orders/${order._id}`, staffToken, { method: 'PATCH', body: JSON.stringify({ shippingFee: 30000 }) });
+    assert.equal(lockedTotal.status, 409);
     const prepareOrder = await call(`/staff/orders/${order._id}`, staffToken, { method: 'PATCH', body: JSON.stringify({ status: 'preparing', message: 'Đang đóng gói.' }) });
     assert.equal(prepareOrder.status, 200);
     const cancelOrder = await call(`/staff/orders/${order._id}`, staffToken, { method: 'PATCH', body: JSON.stringify({ status: 'cancelled', message: 'Dừng theo xác nhận nội bộ.' }) });
@@ -109,7 +114,7 @@ test('Staff xử lý Lead, Service Request, trao đổi và báo giá đúng quy
       code: `DH-DELIVERY-${suffix}`, customer: customer._id, paymentMethod: 'bank_transfer',
       items: [{ product: product._id, name: product.name, sku: product.sku, unit: product.unit, price: product.price, quantity: 1, lineTotal: 250000 }],
       shippingAddress: { recipientName: customer.name, phone: customer.phone, addressLine: 'Cụm 3, Duyên Trường', district: 'Thường Tín', province: 'Hà Nội' },
-      subtotal: 250000, total: 250000, timeline: [{ status: 'pending', message: 'Đơn giao thử nghiệm.' }]
+      subtotal: 250000, total: 250000, termsAcceptedAt: new Date(), termsVersion: 'test', timeline: [{ status: 'pending', message: 'Đơn giao thử nghiệm.' }]
     });
     const concurrentConfirmations = await Promise.all([
       call(`/staff/orders/${deliveryOrder._id}`, staffToken, { method: 'PATCH', body: JSON.stringify({ status: 'confirmed', shippingFee: 30000, message: 'Đã giữ hàng.' }) }),
@@ -121,12 +126,17 @@ test('Staff xử lý Lead, Service Request, trao đổi và báo giá đúng quy
     assert.equal((await call(`/staff/orders/${deliveryOrder._id}`, staffToken, { method: 'PATCH', body: JSON.stringify({ status: 'preparing', message: 'Đang đóng gói.' }) })).status, 200);
     const unpaidShipping = await call(`/staff/orders/${deliveryOrder._id}`, staffToken, { method: 'PATCH', body: JSON.stringify({ status: 'shipping', shippingProvider: 'Xe công ty', message: 'Bắt đầu giao.' }) });
     assert.equal(unpaidShipping.status, 400);
-    const shipping = await call(`/staff/orders/${deliveryOrder._id}`, staffToken, { method: 'PATCH', body: JSON.stringify({ status: 'shipping', paymentStatus: 'paid', shippingProvider: 'Xe công ty', trackingCode: 'DK-TEST', message: 'Đã bàn giao vận chuyển.' }) });
+    const shipping = await call(`/staff/orders/${deliveryOrder._id}`, staffToken, { method: 'PATCH', body: JSON.stringify({ status: 'shipping', paymentStatus: 'paid', amountPaid: 280000, paymentReference: 'FT-DELIVERY-TEST', shippingProvider: 'Xe công ty', trackingCode: 'DK-TEST', message: 'Đã bàn giao vận chuyển.' }) });
     assert.equal(shipping.status, 200);
     assert.equal((await shipping.json()).data.total, 280000);
     const delivered = await call(`/staff/orders/${deliveryOrder._id}`, staffToken, { method: 'PATCH', body: JSON.stringify({ status: 'delivered', message: 'Khách đã nhận đủ hàng.' }) });
     assert.equal(delivered.status, 200);
     assert.ok((await Order.findById(deliveryOrder._id)).deliveredAt);
+    const afterSales = await call(`/customer/orders/${deliveryOrder._id}/after-sales`, customerToken, { method: 'POST', body: JSON.stringify({ type: 'warranty', reason: 'Động cơ phát tiếng ồn bất thường khi vận hành thử.' }) });
+    assert.equal(afterSales.status, 201);
+    const afterSalesId = (await afterSales.json()).data.afterSalesRequests[0]._id;
+    const reviewAfterSales = await call(`/staff/orders/${deliveryOrder._id}/after-sales/${afterSalesId}`, staffToken, { method: 'PATCH', body: JSON.stringify({ status: 'reviewing' }) });
+    assert.equal(reviewAfterSales.status, 200);
   } finally {
     if (serviceRequest) {
       await Promise.all([Quotation.deleteMany({ request: serviceRequest._id }), RequestMessage.deleteMany({ request: serviceRequest._id })]);

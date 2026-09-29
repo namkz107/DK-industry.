@@ -29,9 +29,9 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const value = useMemo<AuthContextValue>(() => ({
     user,
     ready,
-    login: async payload => { const next = await authClient.login(payload); queryClient.removeQueries({ queryKey: ["customer"] }); setUser(next); return next },
-    register: async payload => { const next = await authClient.register(payload); queryClient.removeQueries({ queryKey: ["customer"] }); setUser(next); return next },
-    logout: async () => { try { await authClient.logout() } finally { queryClient.removeQueries({ queryKey: ["customer"] }); setUser(null) } },
+    login: async payload => { const next = await authClient.login(payload); queryClient.removeQueries({ queryKey: ["customer"] }); queryClient.removeQueries({ queryKey: ["notifications"] }); setUser(next); return next },
+    register: async payload => { const next = await authClient.register(payload); queryClient.removeQueries({ queryKey: ["customer"] }); queryClient.removeQueries({ queryKey: ["notifications"] }); setUser(next); return next },
+    logout: async () => { try { await authClient.logout() } finally { queryClient.removeQueries({ queryKey: ["customer"] }); queryClient.removeQueries({ queryKey: ["staff"] }); queryClient.removeQueries({ queryKey: ["admin"] }); queryClient.removeQueries({ queryKey: ["notifications"] }); setUser(null) } },
     updateUser: values => setUser(current => current ? { ...current, ...values } : current),
   }), [user, ready, queryClient])
 

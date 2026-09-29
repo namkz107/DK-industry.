@@ -5,7 +5,6 @@ import { BlurText } from "@/components/react-bits/blur-text"
 import { CountUp } from "@/components/react-bits/count-up"
 import { FadeContent } from "@/components/react-bits/fade-content"
 import { Button } from "@/components/ui/button"
-import { fallbackProducts, fallbackProjects } from "@/data/fallback"
 import { api } from "@/lib/api"
 import { formatPrice } from "@/lib/utils"
 import type { LayoutContext } from "@/components/app-layout"
@@ -23,8 +22,8 @@ export function HomePage() {
   const { openQuote } = useOutletContext<LayoutContext>()
   const projectQuery = useQuery({ queryKey: ["projects", "featured"], queryFn: api.projects, staleTime: 5 * 60_000, retry: 1 })
   const productQuery = useQuery({ queryKey: ["products", "featured"], queryFn: api.products, staleTime: 5 * 60_000, retry: 1 })
-  const projects = projectQuery.data?.data?.length ? projectQuery.data.data : fallbackProjects
-  const products = productQuery.data?.data?.length ? productQuery.data.data : fallbackProducts
+  const projects = projectQuery.data?.data || []
+  const products = productQuery.data?.data || []
 
   return <>
     <section className="relative isolate min-h-[680px] overflow-hidden bg-emerald-950 text-white lg:min-h-[720px]">

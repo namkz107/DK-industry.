@@ -17,6 +17,8 @@ const RefreshSession = require('../src/models/RefreshSession');
 const RequestMessage = require('../src/models/RequestMessage');
 const ServiceRequest = require('../src/models/ServiceRequest');
 const User = require('../src/models/User');
+const WorkOrder = require('../src/models/WorkOrder');
+const Notification = require('../src/models/Notification');
 const { uniqueToken, uniqueVietnamesePhone } = require('../test-utils/uniqueTestData');
 
 const runIntegration = process.env.RUN_CUSTOMER_INTEGRATION === '1';
@@ -62,16 +64,23 @@ test('Customer quản lý hồ sơ, giỏ hàng, đơn hàng và yêu cầu riê
     assert.equal(addCart.status, 201);
     assert.equal((await addCart.json()).data.subtotal, 250000);
 
-    const orderResponse = await request('/customer/orders', customer.accessToken, { method: 'POST', body: JSON.stringify({ addressId, paymentMethod: 'bank_transfer', customerNote: 'Xuất hóa đơn VAT' }) });
+    const idempotencyKey = `checkout-${productToken}-customer-test`;
+    const orderPayload = { addressId, paymentMethod: 'bank_transfer', customerNote: 'Xuất hóa đơn VAT', idempotencyKey, acceptedTerms: true };
+    const orderResponse = await request('/customer/orders', customer.accessToken, { method: 'POST', body: JSON.stringify(orderPayload) });
     const orderBody = await orderResponse.json();
     assert.equal(orderResponse.status, 201);
     assert.equal(orderBody.data.items[0].price, 125000);
     assert.equal(orderBody.data.total, 250000);
+    const duplicateOrder = await request('/customer/orders', customer.accessToken, { method: 'POST', body: JSON.stringify(orderPayload) });
+    assert.equal(duplicateOrder.status, 200);
+    assert.equal((await duplicateOrder.json()).data._id, orderBody.data._id);
 
     const otherCannotReadOrder = await request(`/customer/orders/${orderBody.data._id}`, other.accessToken);
     assert.equal(otherCannotReadOrder.status, 404);
+    await Order.updateOne({ _id: orderBody.data._id }, { paymentStatus: 'paid', amountPaid: orderBody.data.total, paymentLockedAt: new Date(), paymentReference: 'FT-CUSTOMER-CANCEL' });
     const cancelOrder = await request(`/customer/orders/${orderBody.data._id}/cancel`, customer.accessToken, { method: 'PATCH', body: JSON.stringify({ reason: 'Kiểm thử hủy đơn' }) });
     assert.equal(cancelOrder.status, 200);
+    assert.equal((await cancelOrder.json()).data.paymentStatus, 'refund_pending');
 
     const form = new FormData();
     form.append('requestType', 'machining'); form.append('title', 'Gia công chi tiết kiểm thử'); form.append('description', 'Cần gia công chi tiết theo đúng bản vẽ PDF đính kèm.'); form.append('material', 'Inox 304'); form.append('quantity', '10');
@@ -121,6 +130,7 @@ test('Customer quản lý hồ sơ, giỏ hàng, đơn hàng và yêu cầu riê
     assert.equal(acceptQuote.status, 200);
     assert.equal((await acceptQuote.json()).data.status, 'accepted');
     assert.equal((await ServiceRequest.findById(serviceRequest._id)).status, 'accepted');
+    assert.ok(await WorkOrder.exists({ request: serviceRequest._id, quotation: secondQuote._id, status: 'awaiting_contract' }));
 
     const cancelForm = new FormData(); cancelForm.append('requestType', 'consulting'); cancelForm.append('title', 'Yêu cầu để kiểm thử hủy'); cancelForm.append('description', 'Yêu cầu này được tạo riêng để kiểm tra thao tác hủy.');
     const cancellableResponse = await request('/customer/requests', customer.accessToken, { method: 'POST', body: cancelForm });
@@ -143,7 +153,7 @@ test('Customer quản lý hồ sơ, giỏ hàng, đơn hàng và yêu cầu riê
       await fs.promises.unlink(path.join(__dirname, '..', 'storage', 'customer-requests', attachment.storedName)).catch(() => {});
     }
     await Promise.all([
-      Cart.deleteMany({ customer: { $in: users } }), Order.deleteMany({ customer: { $in: users } }),
+      Cart.deleteMany({ customer: { $in: users } }), Order.deleteMany({ customer: { $in: users } }), WorkOrder.deleteMany({ customer: { $in: users } }), Notification.deleteMany({ recipient: { $in: users } }),
       Quotation.deleteMany({ customer: { $in: users } }), RequestMessage.deleteMany({ request: { $in: storedRequests.map(item => item._id) } }), ServiceRequest.deleteMany({ customer: { $in: users } }), RefreshSession.deleteMany({ user: { $in: users } }),
       User.deleteMany({ _id: { $in: users } }), product ? Product.deleteOne({ _id: product._id }) : Promise.resolve()
     ]);
