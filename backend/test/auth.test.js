@@ -4,7 +4,7 @@ const assert = require('node:assert/strict');
 process.env.JWT_SECRET = 'unit_test_secret_that_is_longer_than_32_characters';
 
 const User = require('../src/models/User');
-const { createAccessToken, verifyAccessToken, newRefreshToken, hashToken } = require('../src/services/authService');
+const { createAccessToken, verifyAccessToken, newRefreshToken, hashToken, refreshCookieOptions } = require('../src/services/authService');
 
 test('access token giữ đúng danh tính và quyền trong 15 phút', () => {
   const user = {
@@ -32,6 +32,15 @@ test('refresh token đủ ngẫu nhiên và chỉ lưu dạng hash', () => {
   assert.ok(first.length >= 80);
   assert.match(hashToken(first), /^[a-f0-9]{64}$/);
   assert.notEqual(hashToken(first), first);
+});
+
+test('phiên đăng nhập mặc định kết thúc cùng trình duyệt và chỉ lưu 7 ngày khi được chọn', () => {
+  const sessionCookie = refreshCookieOptions(false);
+  const rememberedCookie = refreshCookieOptions(true);
+
+  assert.equal(sessionCookie.httpOnly, true);
+  assert.equal(sessionCookie.maxAge, undefined);
+  assert.equal(rememberedCookie.maxAge, 7 * 24 * 60 * 60 * 1000);
 });
 
 test('mật khẩu được bcrypt hash và có thể xác thực', async () => {

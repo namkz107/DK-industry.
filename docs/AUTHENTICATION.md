@@ -15,10 +15,12 @@ API đăng ký không đọc trường `role` từ client. Vì vậy người d�
 ## Cơ chế phiên đăng nhập
 
 1. Đăng nhập/đăng ký đúng sẽ trả access token có hạn 15 phút. Frontend chỉ giữ token trong bộ nhớ, không ghi vào `localStorage`.
-2. Backend đồng thời tạo refresh token ngẫu nhiên, gửi bằng cookie `HttpOnly`, `SameSite=Lax`, thời hạn 7 ngày.
+2. Backend đồng thời tạo refresh token ngẫu nhiên, gửi bằng cookie `HttpOnly`, `SameSite=Lax`. Mặc định đây là session cookie và kết thúc cùng phiên trình duyệt; chỉ có `Max-Age` 7 ngày khi người dùng chủ động chọn **Ghi nhớ đăng nhập**.
 3. MongoDB chỉ lưu SHA-256 hash của refresh token trong collection `refreshsessions`, không lưu token gốc.
 4. Khi tải lại trang hoặc access token hết hạn, frontend gọi `/api/auth/refresh`. Token cũ được xoay thành token mới.
 5. Đăng xuất thu hồi session hiện tại. Đổi mật khẩu tăng `tokenVersion` và thu hồi toàn bộ refresh session của tài khoản.
+
+Các refresh session được tạo trước khi có lựa chọn **Ghi nhớ đăng nhập** sẽ không được khôi phục và cookie cũ được xóa ở lần tải ứng dụng tiếp theo.
 6. Mỗi request được bảo vệ đều kiểm tra tài khoản còn tồn tại, đang `active` và đúng `tokenVersion`.
 
 ## Tạo Admin đầu tiên

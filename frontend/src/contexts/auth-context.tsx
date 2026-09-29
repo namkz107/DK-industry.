@@ -7,7 +7,7 @@ import type { AuthUser } from "@/types/auth"
 interface AuthContextValue {
   user: AuthUser | null
   ready: boolean
-  login: (payload: { identifier: string; password: string }) => Promise<AuthUser>
+  login: (payload: { identifier: string; password: string; remember: boolean }) => Promise<AuthUser>
   register: (payload: { name: string; email: string; phone: string; password: string }) => Promise<AuthUser>
   logout: () => Promise<void>
   updateUser: (values: Partial<AuthUser>) => void

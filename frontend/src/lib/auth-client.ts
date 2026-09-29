@@ -46,7 +46,7 @@ export const authClient = {
     accessToken = result.data.accessToken
     return result.data.user
   },
-  async login(payload: { identifier: string; password: string }) {
+  async login(payload: { identifier: string; password: string; remember: boolean }) {
     const result = await publicPost<ApiResponse<AuthPayload>>("/auth/login", payload)
     accessToken = result.data.accessToken
     return result.data.user

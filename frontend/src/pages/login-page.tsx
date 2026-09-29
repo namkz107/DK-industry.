@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input"
 import { useAuth } from "@/contexts/auth-context"
 import { usePageMeta } from "@/hooks/use-page-meta"
 
-const schema = z.object({ identifier: z.string().trim().min(5, "Nhập email hoặc số điện thoại"), password: z.string().min(1, "Nhập mật khẩu") })
+const schema = z.object({ identifier: z.string().trim().min(5, "Nhập email hoặc số điện thoại"), password: z.string().min(1, "Nhập mật khẩu"), remember: z.boolean() })
 type LoginData = z.infer<typeof schema>
 
 export function LoginPage() {
@@ -19,7 +19,7 @@ export function LoginPage() {
   const location = useLocation()
   const [showPassword, setShowPassword] = useState(false)
   const [serverError, setServerError] = useState("")
-  const form = useForm<LoginData>({ resolver: zodResolver(schema), defaultValues: { identifier: "", password: "" } })
+  const form = useForm<LoginData>({ resolver: zodResolver(schema), defaultValues: { identifier: "", password: "", remember: false } })
   const homeForRole = (role: "customer" | "staff" | "admin") => role === "admin" ? "/admin" : role === "staff" ? "/staff" : "/tai-khoan"
   if (ready && user) return <Navigate to={homeForRole(user.role)} replace/>
   const submit = form.handleSubmit(async data => {
@@ -32,6 +32,7 @@ export function LoginPage() {
     <form onSubmit={submit} noValidate>
       <Field label="Email hoặc số điện thoại" error={form.formState.errors.identifier?.message}><Input autoFocus autoComplete="username" placeholder="email@congty.vn hoặc 096..." {...form.register("identifier")}/></Field>
       <Field label="Mật khẩu" error={form.formState.errors.password?.message}><div className="relative"><Input className="pr-12" type={showPassword ? "text" : "password"} autoComplete="current-password" placeholder="Nhập mật khẩu" {...form.register("password")}/><button type="button" className="absolute right-1 top-1 grid size-10 place-items-center rounded-lg text-slate-500 hover:bg-slate-100" onClick={() => setShowPassword(!showPassword)} aria-label={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}>{showPassword ? <EyeOff className="size-5"/> : <Eye className="size-5"/>}</button></div></Field>
+      <label className="mb-5 flex min-h-11 items-center gap-3 text-sm font-semibold text-slate-700"><input className="size-5 accent-orange-600" type="checkbox" {...form.register("remember")}/><span>Ghi nhớ đăng nhập trong 7 ngày</span></label>
       {serverError && <p role="alert" className="mb-5 rounded-xl bg-red-50 p-4 text-sm font-semibold text-red-700">{serverError}</p>}
       <Button className="w-full" size="lg" disabled={form.formState.isSubmitting}>{form.formState.isSubmitting ? <><LoaderCircle className="size-5 animate-spin"/>Đang đăng nhập...</> : <><LogIn className="size-5"/>Đăng nhập</>}</Button>
       <p className="mt-6 text-center text-sm text-slate-600">Chưa có tài khoản? <Link className="font-bold text-orange-700 hover:underline" to="/dang-ky">Đăng ký Customer</Link></p>

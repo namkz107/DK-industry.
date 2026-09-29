@@ -2,7 +2,7 @@ const express = require('express');
 const User = require('../models/User');
 const RefreshSession = require('../models/RefreshSession');
 const { authenticate } = require('../middleware/authenticate');
-const { createAccessToken, createSession, hashToken, newRefreshToken, refreshExpiry, publicUser, cookieOptions, cookieBaseOptions } = require('../services/authService');
+const { createAccessToken, createSession, hashToken, newRefreshToken, refreshExpiry, publicUser, refreshCookieOptions, cookieBaseOptions } = require('../services/authService');
 
 const router = express.Router();
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -29,7 +29,7 @@ router.post('/register', async (req, res, next) => {
 
     const user = await User.create({ name, email, phone, passwordHash: await User.hashPassword(password), role: 'customer' });
     const tokens = await createSession(user, req);
-    res.cookie('dk_refresh', tokens.refreshToken, cookieOptions);
+    res.cookie('dk_refresh', tokens.refreshToken, refreshCookieOptions(false));
     res.status(201).json({ success: true, data: { user: publicUser(user), accessToken: tokens.accessToken } });
   } catch (error) { next(error); }
 });
@@ -45,8 +45,9 @@ router.post('/login', async (req, res, next) => {
 
     user.lastLoginAt = new Date();
     await user.save();
-    const tokens = await createSession(user, req);
-    res.cookie('dk_refresh', tokens.refreshToken, cookieOptions);
+    const persistent = req.body.remember === true;
+    const tokens = await createSession(user, req, persistent);
+    res.cookie('dk_refresh', tokens.refreshToken, refreshCookieOptions(persistent));
     res.json({ success: true, data: { user: publicUser(user), accessToken: tokens.accessToken } });
   } catch (error) { next(error); }
 });
@@ -55,7 +56,10 @@ router.post('/refresh', async (req, res, next) => {
   try {
     const currentToken = req.cookies.dk_refresh;
     if (!currentToken) return res.status(401).json({ success: false, message: 'Không tìm thấy phiên đăng nhập' });
-    const session = await RefreshSession.findOne({ tokenHash: hashToken(currentToken), revokedAt: null, expiresAt: { $gt: new Date() } });
+    const session = await RefreshSession.findOne({
+      tokenHash: hashToken(currentToken), revokedAt: null, expiresAt: { $gt: new Date() },
+      persistent: { $exists: true }
+    });
     if (!session) { res.clearCookie('dk_refresh', cookieBaseOptions); return res.status(401).json({ success: false, message: 'Phiên đăng nhập đã hết hạn' }); }
     const user = await User.findById(session.user).select('+tokenVersion');
     if (!user || user.status !== 'active') { session.revokedAt = new Date(); await session.save(); res.clearCookie('dk_refresh', cookieBaseOptions); return res.status(401).json({ success: false, message: 'Tài khoản không còn hoạt động' }); }
@@ -65,7 +69,7 @@ router.post('/refresh', async (req, res, next) => {
     session.expiresAt = refreshExpiry();
     session.lastUsedAt = new Date();
     await session.save();
-    res.cookie('dk_refresh', refreshToken, cookieOptions);
+    res.cookie('dk_refresh', refreshToken, refreshCookieOptions(session.persistent === true));
     res.json({ success: true, data: { user: publicUser(user), accessToken: createAccessToken(user, session._id) } });
   } catch (error) { next(error); }
 });
