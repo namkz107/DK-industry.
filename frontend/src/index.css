@@ -35,11 +35,33 @@
   .footer-contact { display: flex; gap: .75rem; align-items: flex-start; color: var(--color-slate-400); }
   a.footer-contact:hover { color: white; }
   .footer-contact strong { color: var(--color-slate-300); font-weight: 700; }
+  .industrial-hero { position: relative; isolation: isolate; overflow: hidden; background: #022c22; }
+  .industrial-hero::before { content: ""; position: absolute; z-index: 2; inset: 0; pointer-events: none; background-image: linear-gradient(rgb(167 243 208 / .045) 1px, transparent 1px), linear-gradient(90deg, rgb(167 243 208 / .045) 1px, transparent 1px); background-size: 52px 52px; mask-image: linear-gradient(90deg, transparent 38%, black); }
+  .industrial-hero__image { position: absolute; z-index: -2; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center; animation: industrial-image-drift 16s ease-in-out infinite alternate; }
+  .industrial-hero__shade { position: absolute; z-index: -1; inset: 0; background: linear-gradient(90deg, rgb(2 44 34 / .99) 0%, rgb(2 44 34 / .95) 34%, rgb(2 44 34 / .68) 61%, rgb(2 44 34 / .14) 100%), linear-gradient(0deg, rgb(2 28 23 / .55), transparent 65%); }
+  .industrial-hero__noise { position: absolute; z-index: 1; inset: 0; opacity: .28; pointer-events: none; background: radial-gradient(circle at 13% 84%, rgb(249 115 22 / .22), transparent 22%), linear-gradient(118deg, transparent 58%, rgb(255 255 255 / .055) 58.2%, transparent 58.5%); }
+  .industrial-hero__beam { position: absolute; z-index: 2; top: -35%; right: 22%; width: 2px; height: 170%; background: linear-gradient(transparent, rgb(251 146 60 / .85), transparent); box-shadow: 0 0 30px 4px rgb(251 146 60 / .24); transform: rotate(14deg); animation: industrial-hero-beam 8s ease-in-out infinite; }
+  .industrial-hero__rings { position: absolute; z-index: 2; right: 5%; top: 50%; width: 270px; height: 270px; transform: translateY(-50%); opacity: .48; pointer-events: none; }
+  .industrial-hero__rings i { position: absolute; inset: 0; border: 1px solid rgb(167 243 208 / .28); border-radius: 50%; animation: industrial-ring 14s linear infinite; }
+  .industrial-hero__rings i:nth-child(2) { inset: 22%; border-color: rgb(251 146 60 / .42); border-style: dashed; animation-direction: reverse; animation-duration: 10s; }
+  .industrial-hero__rings i:nth-child(3) { inset: 44%; border: 4px solid rgb(251 146 60 / .8); box-shadow: 0 0 22px rgb(251 146 60 / .35); animation: industrial-heartbeat 2.8s ease-out infinite; }
+  .industrial-photo-grid { position: absolute; inset: 0; z-index: -9; opacity: .18; background-image: linear-gradient(rgb(167 243 208 / .18) 1px, transparent 1px), linear-gradient(90deg, rgb(167 243 208 / .18) 1px, transparent 1px); background-size: 64px 64px; mask-image: linear-gradient(90deg, transparent 45%, black); }
+  .industrial-photo-scan { position: absolute; z-index: -8; top: -20%; right: 10%; width: 2px; height: 140%; background: linear-gradient(transparent, #fb923c, transparent); box-shadow: 0 0 30px 4px rgb(251 146 60 / .34); transform: rotate(18deg); animation: industrial-photo-scan 7s ease-in-out infinite; }
+  .industrial-strip { position: relative; overflow: hidden; background-image: linear-gradient(90deg, transparent, rgb(16 185 129 / .08), transparent), linear-gradient(rgb(167 243 208 / .045) 1px, transparent 1px), linear-gradient(90deg, rgb(167 243 208 / .045) 1px, transparent 1px); background-size: 100% 100%, 44px 44px, 44px 44px; }
 }
+
+@keyframes industrial-image-drift { from { transform: scale(1.015); } to { transform: scale(1.065) translateX(-.6%); } }
+@keyframes industrial-hero-beam { 0%, 100% { transform: translateX(190px) rotate(14deg); opacity: 0; } 18%, 82% { opacity: .7; } 50% { transform: translateX(-440px) rotate(14deg); } }
+@keyframes industrial-ring { to { transform: rotate(360deg); } }
+@keyframes industrial-heartbeat { 0%, 100% { transform: scale(.84); opacity: .4; } 55% { transform: scale(1.08); opacity: 1; } }
+@keyframes industrial-photo-scan { 0%, 100% { transform: translateX(230px) rotate(18deg); opacity: 0; } 20%, 80% { opacity: .8; } 50% { transform: translateX(-480px) rotate(18deg); } }
 
 @media (max-width: 767px) {
   .section-title-row { align-items: start; flex-direction: column; }
   .section-title-row > p { max-width: none; }
+  .industrial-hero__shade { background: linear-gradient(90deg, rgb(2 44 34 / .97), rgb(2 44 34 / .82)), linear-gradient(0deg, rgb(2 28 23 / .65), transparent); }
+  .industrial-hero__image { object-position: 62% center; }
+  .industrial-hero__rings { right: -90px; width: 220px; height: 220px; opacity: .32; }
 }
 
 @media (prefers-reduced-motion: reduce) {

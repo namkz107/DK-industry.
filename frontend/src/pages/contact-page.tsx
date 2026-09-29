@@ -7,7 +7,7 @@ import { usePageMeta } from "@/hooks/use-page-meta"
 export function ContactPage() {
   usePageMeta("Liên hệ", "Thông tin liên hệ, địa chỉ nhà xưởng và chỉ đường đến Cơ khí Đăng Khoa.")
   return <>
-    <PageHero eyebrow="Kết nối với chúng tôi" title="Liên hệ Cơ khí Đăng Khoa" description="Trao đổi trực tiếp với đội ngũ kỹ thuật hoặc đến nhà xưởng để khảo sát năng lực sản xuất."/>
+    <PageHero variant="contact" eyebrow="Kết nối với chúng tôi" title="Liên hệ Cơ khí Đăng Khoa" description="Trao đổi trực tiếp với đội ngũ kỹ thuật hoặc đến nhà xưởng để khảo sát năng lực sản xuất."/>
     <section className="section-space bg-stone-50"><div className="container-page grid gap-7 lg:grid-cols-[.8fr_1.2fr]">
       <div className="space-y-4">
         <ContactItem icon={Phone} title="Hotline"><a className="font-bold text-emerald-800 hover:text-orange-700" href={`tel:${company.phone}`}>{company.phoneLabel}</a></ContactItem>

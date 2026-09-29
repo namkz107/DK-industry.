@@ -20,12 +20,11 @@ const ceoImage = import.meta.env.VITE_CLOUDINARY_CEO_IMAGE_URL
 
 export function AboutPage() {
   return <>
-    <section className="relative overflow-hidden bg-emerald-950 py-20 text-white sm:py-28">
-      <div className="absolute -right-24 -top-24 size-80 rounded-full border border-white/10" />
-      <div className="absolute -bottom-40 right-24 size-80 rounded-full bg-orange-500/10 blur-3xl" />
-      <div className="container-page relative grid items-end gap-10 lg:grid-cols-[1.2fr_.8fr]">
-        <div><p className="text-xs font-bold uppercase tracking-[.22em] text-orange-400">Về Cơ khí Đăng Khoa</p><h1 className="mt-5 max-w-3xl font-display text-4xl font-bold tracking-tight sm:text-6xl">Kiến tạo giải pháp.<br/><span className="text-orange-400">Đồng hành phát triển.</span></h1></div>
-        <p className="max-w-xl text-lg leading-8 text-emerald-50/70">CTY CPTV ĐẦU TƯ XD  TM ĐĂNG KHOA là đối tác tư vấn, chế tạo và thi công cơ khí công nghiệp toàn diện. Chúng tôi kết nối năng lực kỹ thuật với sự tận tâm để biến yêu cầu của khách hàng thành những công trình hiệu quả và bền vững.</p>
+    <section className="industrial-hero text-white">
+      <img className="industrial-hero__image" src="/images/heroes/about-hero.jpg" alt="" fetchPriority="high"/>
+      <div className="industrial-hero__shade"/><div className="industrial-hero__noise"/><div className="industrial-hero__beam"/><div className="industrial-hero__rings"><i/><i/><i/></div>
+      <div className="container-page relative z-10 flex min-h-[500px] items-center py-16 lg:py-20">
+        <div className="max-w-[790px]"><p className="text-xs font-bold uppercase tracking-[.22em] text-orange-400">Về Cơ khí Đăng Khoa</p><h1 className="mt-5 max-w-3xl font-display text-4xl font-bold tracking-tight sm:text-6xl">Kiến tạo giải pháp.<br/><span className="text-orange-400">Đồng hành phát triển.</span></h1><p className="mt-6 max-w-2xl text-lg leading-8 text-emerald-50/75">CTY CPTV ĐẦU TƯ XD TM ĐĂNG KHOA là đối tác tư vấn, chế tạo và thi công cơ khí công nghiệp toàn diện. Chúng tôi kết nối năng lực kỹ thuật với sự tận tâm để biến yêu cầu của khách hàng thành những công trình hiệu quả và bền vững.</p></div>
       </div>
     </section>
 
@@ -43,6 +42,6 @@ export function AboutPage() {
       <div className="flex flex-col justify-center p-8 sm:p-12"><Lightbulb className="size-10 text-orange-600"/><p className="mt-7 text-xs font-extrabold uppercase tracking-[.2em] text-orange-700">CEO & Founder</p><h3 className="mt-3 font-display text-3xl font-bold text-emerald-950">Nhà sáng lập CTY CPTV ĐẦU TƯ XD  TM ĐĂNG KHOA</h3><p className="mt-5 text-lg leading-8 text-slate-600">Dẫn dắt công ty với định hướng lấy chất lượng kỹ thuật, sự minh bạch và hiệu quả thực tế làm nền tảng cho mọi mối quan hệ hợp tác.</p></div>
     </article></FadeContent></div></section>
 
-    <section className="bg-emerald-900 py-16 text-white"><div className="container-page flex flex-col items-start justify-between gap-7 md:flex-row md:items-center"><div><h2 className="font-display text-3xl font-bold sm:text-4xl">Cùng chúng tôi kiến tạo công trình tiếp theo.</h2><p className="mt-3 text-lg text-emerald-50/70">Chia sẻ nhu cầu để đội ngũ kỹ thuật CTY CPTV ĐẦU TƯ XD  TM ĐĂNG KHOA tư vấn giải pháp phù hợp.</p></div><Button asChild size="lg" className="shrink-0 bg-orange-600 hover:bg-orange-500"><Link to="/">Khám phá  <ArrowRight className="size-5"/></Link></Button></div></section>
+    <section className="industrial-strip bg-emerald-900 py-16 text-white"><div className="container-page relative flex flex-col items-start justify-between gap-7 md:flex-row md:items-center"><div><h2 className="font-display text-3xl font-bold sm:text-4xl">Cùng chúng tôi kiến tạo công trình tiếp theo.</h2><p className="mt-3 text-lg text-emerald-50/70">Chia sẻ nhu cầu để đội ngũ kỹ thuật CTY CPTV ĐẦU TƯ XD  TM ĐĂNG KHOA tư vấn giải pháp phù hợp.</p></div><Button asChild size="lg" className="shrink-0 bg-orange-600 hover:bg-orange-500"><Link to="/">Khám phá  <ArrowRight className="size-5"/></Link></Button></div></section>
   </>
 }

@@ -46,7 +46,7 @@ export function ProductsPage() {
   }
 
   return <>
-    <PageHero eyebrow="Thiết bị & vật tư" title="Sản phẩm công nghiệp" description="Sản phẩm có giá được đặt trực tiếp; hàng chế tạo hoặc số lượng dự án sẽ chuyển sang yêu cầu báo giá."/>
+    <PageHero variant="products" eyebrow="Thiết bị & vật tư" title="Sản phẩm công nghiệp" description="Sản phẩm có giá được đặt trực tiếp; hàng chế tạo hoặc số lượng dự án sẽ chuyển sang yêu cầu báo giá."/>
     <section className="section-space bg-stone-50"><div className="container-page">
       {notice && <p role="status" className="mx-auto mb-5 flex max-w-2xl items-center gap-2 rounded-2xl bg-emerald-50 p-4 font-semibold text-emerald-800"><CheckCircle2 className="size-5"/>{notice}</p>}
       {add.error && <p role="alert" className="mx-auto mb-5 max-w-2xl rounded-2xl bg-red-50 p-4 font-semibold text-red-700">{add.error.message}</p>}
