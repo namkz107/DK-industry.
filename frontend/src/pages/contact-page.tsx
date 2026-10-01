@@ -12,7 +12,7 @@ export function ContactPage() {
       <div className="space-y-4">
         <ContactItem icon={Phone} title="Hotline"><a className="font-bold text-emerald-800 hover:text-orange-700" href={`tel:${company.phone}`}>{company.phoneLabel}</a></ContactItem>
         <ContactItem icon={Mail} title="Email"><a className="break-all font-bold text-emerald-800 hover:text-orange-700" href={`mailto:${company.email}`}>{company.email}</a></ContactItem>
-        <ContactItem icon={MapPin} title="Trụ sở & nhà xưởng"><address className="not-italic leading-7 text-slate-600">{company.address}</address><a className="mt-3 inline-flex items-center gap-2 font-bold text-orange-700" href={companyMapUrl} target="_blank" rel="noreferrer"><Navigation className="size-4"/>Mở chỉ đường</a></ContactItem>
+        <ContactItem icon={MapPin} title="Trụ sở & nhà xưởng (Cụm 3 thôn Duyên Trường, Xã Hồng Vân, Thành Phố Hà Nội Việt Nam)"><address className="not-italic leading-7 text-slate-600">{company.address}</address><a className="mt-3 inline-flex items-center gap-2 font-bold text-orange-700" href={companyMapUrl} target="_blank" rel="noreferrer"><Navigation className="size-4"/>Mở chỉ đường</a></ContactItem>
         <ContactItem icon={Clock3} title="Hẹn lịch làm việc"><p className="leading-7 text-slate-600">Vui lòng liên hệ trước khi đến để đội ngũ kỹ thuật sắp xếp tiếp đón tại nhà xưởng.</p></ContactItem>
       </div>
       <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl shadow-slate-900/5"><CompanyMap/></div>
