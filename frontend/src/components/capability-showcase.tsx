@@ -60,7 +60,6 @@ const capabilities: Capability[] = [
 
 export function CapabilityShowcase() {
   const [active, setActive] = useState(0)
-  const [previewOffset, setPreviewOffset] = useState<number | null>(null)
   const [paused, setPaused] = useState(false)
   const sectionRef = useRef<HTMLElement>(null)
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([])
@@ -70,7 +69,6 @@ export function CapabilityShowcase() {
   const Icon = current.icon
 
   const selectTab = (index: number) => {
-    setPreviewOffset(null)
     setActive(index)
     tabRefs.current[index]?.focus()
   }
@@ -101,10 +99,6 @@ export function CapabilityShowcase() {
         role="tablist"
         aria-label="Các giai đoạn năng lực"
         onKeyDown={handleKeyDown}
-        onMouseEnter={() => setPaused(true)}
-        onMouseLeave={() => setPaused(false)}
-        onFocusCapture={() => setPaused(true)}
-        onBlurCapture={event => { if (!event.currentTarget.contains(event.relatedTarget)) setPaused(false) }}
       >
         {capabilities.map((item, index) => <button
           ref={node => { tabRefs.current[index] = node }}
@@ -116,7 +110,7 @@ export function CapabilityShowcase() {
           aria-controls="capability-panel"
           tabIndex={active === index ? 0 : -1}
           className={`relative min-h-12 shrink-0 rounded-full px-5 text-sm font-extrabold transition-colors sm:px-7 ${active === index ? "text-white" : "text-slate-700 hover:text-emerald-900"}`}
-          onClick={() => { setPreviewOffset(null); setActive(index) }}
+          onClick={() => setActive(index)}
         >
           {active === index && <motion.span
             layoutId="capability-active-tab"
@@ -129,50 +123,38 @@ export function CapabilityShowcase() {
 
       <div id="capability-panel" role="tabpanel" aria-labelledby={`capability-tab-${active}`} className="mt-14 grid items-center gap-14 lg:grid-cols-[1.08fr_.92fr] lg:gap-20">
         <div className="relative min-h-[400px] sm:min-h-[460px]">
-          <AnimatePresence mode="wait" initial={false}>
-            <motion.div
-              key={`visual-${active}`}
-              className="absolute inset-0"
-              initial={reduceMotion ? false : { opacity: 0, x: -38, scale: .97 }}
-              animate={{ opacity: 1, x: 0, scale: 1 }}
-              exit={reduceMotion ? { opacity: 0 } : { opacity: 0, x: 28, scale: .985 }}
-              transition={{ duration: reduceMotion ? 0 : .58, ease: [.2, .75, .2, 1] }}
-            >
-              <div
-                className={`capability-visual-deck${previewOffset === null ? "" : " capability-visual-deck--open"}${inView && !paused && !reduceMotion ? " capability-visual-deck--running" : ""}`}
-                onMouseEnter={() => setPaused(true)}
-                onMouseLeave={() => { setPreviewOffset(null); setPaused(false) }}
-                onFocusCapture={() => setPaused(true)}
-                onBlurCapture={event => { if (!event.currentTarget.contains(event.relatedTarget)) setPaused(false) }}
-              >
-                {[0, 1, 2].map(offset => {
-                  const itemIndex = (active + offset) % capabilities.length
-                  const item = capabilities[itemIndex]
-                  const CardIcon = item.icon
-                  const position = offset === 0 ? "front" : offset === 1 ? "middle" : "back"
-                  const selected = previewOffset === offset
-                  return <button
-                    key={item.label}
-                    type="button"
-                    className={`capability-visual-card capability-visual-card--${position}${selected ? " capability-visual-card--selected" : ""}`}
-                    aria-label={`Xem hình giai đoạn ${item.label}`}
-                    aria-pressed={selected}
-                    onMouseEnter={() => setPreviewOffset(offset)}
-                    onFocus={() => setPreviewOffset(offset)}
-                    onClick={() => setPreviewOffset(selected ? null : offset)}
-                  >
-                    <span className="block size-full overflow-hidden bg-slate-200">
-                      <img className="size-full object-cover" src={item.image} alt={item.alt} />
-                    </span>
-                    <span className="capability-visual-card__label"><CardIcon className="size-4" />{item.label}</span>
-                    <span className="capability-visual-card__caption absolute inset-x-0 bottom-0 flex items-center justify-between gap-4 bg-gradient-to-t from-emerald-950 via-emerald-950/90 to-transparent px-5 pb-5 pt-14 text-white">
-                      <span><span className="block text-[10px] font-black uppercase tracking-[.18em] text-orange-300">Giai đoạn 0{itemIndex + 1}</span><strong className="mt-1 block font-display text-lg">{item.title}</strong></span>
-                    </span>
-                  </button>
-                })}
-              </div>
-            </motion.div>
-          </AnimatePresence>
+          <motion.div
+            className={`capability-carousel absolute inset-0${inView && !paused && !reduceMotion ? " capability-carousel--running" : ""}`}
+            initial={reduceMotion ? false : { opacity: 0, x: -30, scale: .96 }}
+            whileInView={{ opacity: 1, x: 0, scale: 1 }}
+            viewport={{ once: true, amount: .3 }}
+            transition={{ duration: reduceMotion ? 0 : .65, ease: [.2, .75, .2, 1] }}
+            onMouseEnter={() => setPaused(true)}
+            onMouseLeave={() => setPaused(false)}
+            onFocusCapture={() => setPaused(true)}
+            onBlurCapture={event => { if (!event.currentTarget.contains(event.relatedTarget)) setPaused(false) }}
+          >
+            <div className="capability-carousel__inner">
+              {capabilities.map((item, index) => {
+                const CardIcon = item.icon
+                return <button
+                  key={item.label}
+                  type="button"
+                  className={`capability-carousel__card${active === index ? " capability-carousel__card--active" : ""}`}
+                  style={{ transform: `rotateY(${index * 90}deg) translateZ(var(--carousel-depth))` }}
+                  aria-label={`Chọn giai đoạn ${item.label}`}
+                  aria-pressed={active === index}
+                  onClick={() => setActive(index)}
+                >
+                  <span className="capability-carousel__surface">
+                    <img src={item.image} alt={item.alt} />
+                    <span className="capability-carousel__shade" />
+                    <span className="capability-carousel__label"><CardIcon className="size-5" /><span><small>Giai đoạn 0{index + 1}</small><strong>{item.label}</strong></span></span>
+                  </span>
+                </button>
+              })}
+            </div>
+          </motion.div>
         </div>
 
         <AnimatePresence mode="wait" initial={false}>
