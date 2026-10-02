@@ -1,0 +1,105 @@
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const http = require('node:http');
+const path = require('node:path');
+const mongoose = require('mongoose');
+const { io: createClient } = require('socket.io-client');
+
+require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
+process.env.NODE_ENV = 'test';
+process.env.JWT_SECRET ||= 'local_support_integration_secret_longer_than_32_characters';
+
+const app = require('../src/app');
+const Notification = require('../src/models/Notification');
+const SupportConversation = require('../src/models/SupportConversation');
+const SupportMessage = require('../src/models/SupportMessage');
+const User = require('../src/models/User');
+const { initializeChatGateway } = require('../src/realtime/chatGateway');
+const { createAccessToken } = require('../src/services/authService');
+const { uniqueToken, uniqueVietnamesePhone } = require('../test-utils/uniqueTestData');
+
+const runIntegration = process.env.RUN_SUPPORT_INTEGRATION === '1';
+const waitFor = (socket, event, timeout = 2500) => new Promise((resolve, reject) => {
+  const timer = setTimeout(() => reject(new Error(`Timeout waiting for ${event}`)), timeout);
+  socket.once(event, value => { clearTimeout(timer); resolve(value); });
+});
+const join = (socket, conversationId) => new Promise(resolve => socket.emit('support:join', String(conversationId), resolve));
+
+test('Support Chat bảo vệ phiên Guest, phân quyền Staff, realtime và idempotency', { skip: !runIntegration }, async () => {
+  await mongoose.connect(process.env.MONGODB_URI);
+  const server = http.createServer(app);
+  const io = initializeChatGateway(server);
+  server.listen(0, '127.0.0.1');
+  await new Promise(resolve => server.once('listening', resolve));
+  const origin = `http://127.0.0.1:${server.address().port}`;
+  const suffix = uniqueToken('support');
+  const passwordHash = await User.hashPassword('StrongPass123');
+  const [staff, customer] = await User.create([
+    { name: 'Nhân viên Support Test', email: `${suffix}-staff@example.com`, phone: uniqueVietnamesePhone('094'), passwordHash, role: 'staff' },
+    { name: 'Khách không liên quan', email: `${suffix}-customer@example.com`, phone: uniqueVietnamesePhone('095'), passwordHash, role: 'customer' }
+  ]);
+  const accessToken = user => createAccessToken(user, new mongoose.Types.ObjectId());
+  let conversationId;
+  let guestSocket;
+  let staffSocket;
+
+  try {
+    const firstClientMessageId = `guest_${suffix}`;
+    const first = await fetch(`${origin}/api/support/messages`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: 'Khách Guest Test', phone: '0912345678', content: 'Tôi cần tư vấn gia công.', clientMessageId: firstClientMessageId })
+    });
+    assert.equal(first.status, 201);
+    const firstBody = await first.json();
+    conversationId = firstBody.data.conversation._id;
+    assert.ok(firstBody.data.socketToken);
+    const cookie = first.headers.get('set-cookie').split(';')[0];
+
+    const session = await fetch(`${origin}/api/support/session`, { headers: { Cookie: cookie } });
+    assert.equal(session.status, 200);
+    assert.equal((await session.json()).data.conversation._id, conversationId);
+
+    const duplicate = await fetch(`${origin}/api/support/messages`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', Cookie: cookie },
+      body: JSON.stringify({ content: 'Tôi cần tư vấn gia công.', clientMessageId: firstClientMessageId })
+    });
+    assert.equal(duplicate.status, 200);
+    assert.equal(await SupportMessage.countDocuments({ conversation: conversationId, clientMessageId: firstClientMessageId }), 1);
+
+    const forbidden = await fetch(`${origin}/api/support/conversations`, { headers: { Authorization: `Bearer ${accessToken(customer)}` } });
+    assert.equal(forbidden.status, 403);
+
+    guestSocket = createClient(`${origin}/support`, { transports: ['websocket'], auth: { supportToken: firstBody.data.socketToken } });
+    staffSocket = createClient(`${origin}/support`, { transports: ['websocket'], auth: { token: accessToken(staff) } });
+    await Promise.all([waitFor(guestSocket, 'connect'), waitFor(staffSocket, 'connect')]);
+    assert.deepEqual(await join(guestSocket, conversationId), { ok: true });
+    assert.deepEqual(await join(staffSocket, conversationId), { ok: true });
+    assert.equal((await join(guestSocket, new mongoose.Types.ObjectId())).ok, false);
+
+    const realtime = waitFor(guestSocket, 'support:message');
+    const staffClientMessageId = `staff_${suffix}`;
+    const reply = await fetch(`${origin}/api/support/conversations/${conversationId}/messages`, {
+      method: 'POST', headers: { Authorization: `Bearer ${accessToken(staff)}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content: 'DK Industry đã tiếp nhận yêu cầu.', clientMessageId: staffClientMessageId })
+    });
+    assert.equal(reply.status, 201);
+    assert.equal((await realtime).message.clientMessageId, staffClientMessageId);
+
+    const duplicateReply = await fetch(`${origin}/api/support/conversations/${conversationId}/messages`, {
+      method: 'POST', headers: { Authorization: `Bearer ${accessToken(staff)}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content: 'DK Industry đã tiếp nhận yêu cầu.', clientMessageId: staffClientMessageId })
+    });
+    assert.equal(duplicateReply.status, 200);
+    assert.equal(await SupportMessage.countDocuments({ conversation: conversationId, clientMessageId: staffClientMessageId }), 1);
+  } finally {
+    guestSocket?.disconnect(); staffSocket?.disconnect();
+    if (conversationId) {
+      await SupportMessage.deleteMany({ conversation: conversationId });
+      await SupportConversation.deleteOne({ _id: conversationId });
+    }
+    await Notification.deleteMany({ recipient: { $in: [staff._id, customer._id] } });
+    await User.deleteMany({ _id: { $in: [staff._id, customer._id] } });
+    await new Promise(resolve => io.close(resolve));
+    await mongoose.disconnect();
+  }
+});

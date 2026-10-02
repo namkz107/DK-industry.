@@ -41,6 +41,7 @@ function refreshSession() {
 }
 
 export const authClient = {
+  accessToken: () => accessToken,
   async register(payload: { name: string; email: string; phone: string; password: string }) {
     const result = await publicPost<ApiResponse<AuthPayload>>("/auth/register", payload)
     accessToken = result.data.accessToken

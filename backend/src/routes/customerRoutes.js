@@ -16,6 +16,8 @@ const { withTransaction } = require('../services/transactionService');
 const { writeAudit } = require('../services/auditService');
 const { notifyOperations, dispatchSoon } = require('../services/notificationService');
 const { validateUploadedFiles } = require('../services/fileSecurityService');
+const { createIdempotentMessage, messagePage, publicMessage } = require('../services/chatMessageService');
+const { emitMessage, emitRequestEvent, emitRequestUpdated } = require('../services/realtimeService');
 
 const router = express.Router();
 const phonePattern = /^(?:\+84|0)[0-9]{9,10}$/;
@@ -456,10 +458,15 @@ router.post('/orders/:id/after-sales', async (req, res, next) => {
 router.get('/requests', async (req, res, next) => {
   try {
     const requests = await ServiceRequest.find({ customer: req.user._id }).select('-attachments.storedName').sort({ createdAt: -1 }).limit(100).lean();
-    const quotations = await Quotation.find({ request: { $in: requests.map(item => item._id) }, status: { $ne: 'draft' } }).sort({ version: -1 }).lean();
+    const requestIds = requests.map(item => item._id);
+    const [quotations, unread] = await Promise.all([
+      Quotation.find({ request: { $in: requestIds }, status: { $ne: 'draft' } }).sort({ version: -1 }).lean(),
+      RequestMessage.aggregate([{ $match: { request: { $in: requestIds }, visibility: 'customer', senderRole: { $in: ['staff', 'admin', 'system'] }, readByCustomerAt: null } }, { $group: { _id: '$request', count: { $sum: 1 } } }])
+    ]);
     const latestByRequest = new Map();
+    const unreadByRequest = new Map(unread.map(item => [String(item._id), item.count]));
     for (const quotation of quotations) if (!latestByRequest.has(String(quotation.request))) latestByRequest.set(String(quotation.request), quotation);
-    res.json({ success: true, data: requests.map(request => ({ ...request, latestQuotation: latestByRequest.get(String(request._id)) || null })) });
+    res.json({ success: true, data: requests.map(request => ({ ...request, unreadCount: unreadByRequest.get(String(request._id)) || 0, latestQuotation: latestByRequest.get(String(request._id)) || null })) });
   } catch (error) { next(error); }
 });
 
@@ -468,13 +475,25 @@ router.get('/requests/:id', async (req, res, next) => {
     if (!validId(req.params.id)) fail('Yêu cầu không hợp lệ', 404);
     const request = await ServiceRequest.findOne({ _id: req.params.id, customer: req.user._id }).select('-attachments.storedName').lean();
     if (!request) fail('Không tìm thấy yêu cầu', 404);
-    const [messages, quotations] = await Promise.all([
-      RequestMessage.find({ request: request._id, visibility: 'customer' }).sort({ createdAt: 1 }).limit(200).lean(),
+    const [messageResult, quotations] = await Promise.all([
+      messagePage({ request: request._id, visibility: 'customer' }, { limit: 50 }),
       Quotation.find({ request: request._id, customer: req.user._id, status: { $ne: 'draft' } }).sort({ version: -1 }).lean()
     ]);
     const workOrder = await WorkOrder.findOne({ request: request._id, customer: req.user._id }).lean();
-    await RequestMessage.updateMany({ request: request._id, visibility: 'customer', senderRole: { $in: ['staff', 'admin', 'system'] }, readByCustomerAt: null }, { readByCustomerAt: new Date() });
-    res.json({ success: true, data: { request, messages, quotations, workOrder } });
+    const readAt = new Date();
+    const readResult = await RequestMessage.updateMany({ request: request._id, visibility: 'customer', senderRole: { $in: ['staff', 'admin', 'system'] }, readByCustomerAt: null }, { readByCustomerAt: readAt });
+    if (readResult.modifiedCount) emitRequestEvent(request._id, 'message:read', { requestId: String(request._id), readerRole: 'customer', readAt: readAt.toISOString() });
+    res.json({ success: true, data: { request, messages: messageResult.items, messagePage: { hasMore: messageResult.hasMore, nextCursor: messageResult.nextCursor }, quotations, workOrder } });
+  } catch (error) { next(error); }
+});
+
+router.get('/requests/:id/messages', async (req, res, next) => {
+  try {
+    if (!validId(req.params.id)) fail('Yêu cầu không hợp lệ', 404);
+    const request = await ServiceRequest.exists({ _id: req.params.id, customer: req.user._id });
+    if (!request) fail('Không tìm thấy yêu cầu', 404);
+    const data = await messagePage({ request: req.params.id, visibility: 'customer' }, { before: req.query.before, limit: req.query.limit });
+    res.json({ success: true, data });
   } catch (error) { next(error); }
 });
 
@@ -524,11 +543,16 @@ router.post('/requests/:id/messages', upload.array('attachments', 3), async (req
     const content = clean(req.body.content);
     if (!content && !req.files?.length) fail('Vui lòng nhập nội dung hoặc đính kèm tệp');
     if (content.length > 3000) fail('Nội dung trao đổi tối đa 3.000 ký tự');
-    const message = await RequestMessage.create({
+    const result = await createIdempotentMessage({
       request: request._id, sender: req.user._id, senderRole: 'customer', visibility: 'customer',
+      clientMessageId: req.body.clientMessageId,
       content: content || 'Khách hàng đã gửi thêm tệp đính kèm.', readByCustomerAt: new Date(),
       attachments: (req.files || []).map(file => ({ originalName: file.originalname, storedName: file.filename, mimeType: file.mimetype, size: file.size }))
     });
+    if (result.duplicate) {
+      await removeUploadedFiles(req.files);
+      return res.status(200).json({ success: true, message: 'Tin nhắn đã được gửi trước đó', data: publicMessage(result.message) });
+    }
     request.lastCustomerMessageAt = new Date();
     if (request.status === 'need_more_info') {
       transitionServiceRequest(request, 'reviewing', { message: 'Khách hàng đã bổ sung thông tin.', actorType: 'customer', actor: req.user._id });
@@ -536,7 +560,9 @@ router.post('/requests/:id/messages', upload.array('attachments', 3), async (req
     await request.save();
     await notifyOperations({ type: 'request.customer_message', title: `Khách bổ sung yêu cầu ${request.code}`, message: content || 'Khách hàng đã gửi thêm tệp đính kèm.', link: '/staff/requests', metadata: { requestId: request._id } });
     dispatchSoon();
-    res.status(201).json({ success: true, message: 'Đã gửi trao đổi', data: { id: message._id, createdAt: message.createdAt } });
+    emitMessage(result.message);
+    emitRequestUpdated(request._id, 'customer_message');
+    res.status(201).json({ success: true, message: 'Đã gửi trao đổi', data: publicMessage(result.message) });
   } catch (error) { await removeUploadedFiles(req.files); next(error); }
 });
 
@@ -602,6 +628,7 @@ router.patch('/requests/:requestId/quotations/:quotationId/respond', async (req,
     });
     await notifyOperations({ type: `quotation.${decision}`, title: `Báo giá ${quotation.code} đã được phản hồi`, message: decision === 'accepted' ? `Khách hàng đã chấp thuận. Công việc ${workOrder?.code || ''} đã được khởi tạo.` : `Khách hàng chưa chấp thuận.${responseNote ? ` ${responseNote}` : ''}`, link: '/staff/requests', metadata: { quotationId: quotation._id, workOrderId: workOrder?._id } });
     dispatchSoon();
+    emitRequestUpdated(req.params.requestId, `quotation_${decision}`);
     res.json({ success: true, message: decision === 'accepted' ? 'Đã chấp thuận báo giá' : 'Đã gửi phản hồi báo giá', data: quotation });
   } catch (error) { next(error); }
 });
@@ -632,6 +659,7 @@ router.patch('/requests/:id/cancel', async (req, res, next) => {
     });
     await notifyOperations({ type: 'request.cancelled', title: `Yêu cầu ${request.code} đã bị hủy`, message: `${req.user.name} đã hủy yêu cầu.`, link: '/staff/requests', metadata: { requestId: request._id } });
     dispatchSoon();
+    emitRequestUpdated(request._id, 'cancelled');
     res.json({ success: true, message: 'Đã hủy yêu cầu', data: request });
   } catch (error) { next(error); }
 });

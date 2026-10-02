@@ -8,7 +8,8 @@ Tài liệu này phân biệt phần hệ thống đã kiểm soát trong mã ng
 - Đặt `NODE_ENV=production`, `JWT_SECRET` đủ mạnh, `FRONTEND_URL` đúng origin HTTPS và `TRUST_PROXY` phù hợp với reverse proxy thực tế.
 - Không dùng tài khoản seed hoặc mật khẩu mẫu. Sau khi bootstrap Admin, xóa `ADMIN_SEED_PASSWORD` khỏi môi trường chạy.
 - Bật HTTPS, backup MongoDB định kỳ, kiểm thử phục hồi backup, log tập trung, cảnh báo lỗi và giám sát endpoint `/api/health`.
-- Nếu chạy nhiều instance API, chuyển rate limit và tác vụ định kỳ sang kho dùng chung/worker duy nhất để tránh giới hạn lệch hoặc gửi nhắc trùng.
+- Reverse proxy phải cho phép WebSocket upgrade tại đường dẫn `/socket.io`; cấu hình `VITE_SOCKET_URL` trỏ tới public origin của API realtime.
+- Nếu chạy nhiều instance API, thêm Socket.IO Redis Streams Adapter, chuyển rate limit sang kho dùng chung và chỉ chạy tác vụ định kỳ trên một worker để tránh sự kiện hoặc giới hạn bị lệch giữa các node.
 
 ## Email, tệp và bản đồ
 

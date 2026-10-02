@@ -1,5 +1,5 @@
 import { authClient } from "@/lib/auth-client"
-import type { LeadStatus, Paged, Priority, RequestStatus, StaffDashboard, StaffLead, StaffMember, StaffOrder, StaffQuotation, StaffRequest, StaffRequestDetail, StaffWorkOrder, WorkOrderStatus } from "@/types/staff"
+import type { LeadStatus, Paged, Priority, RequestStatus, StaffDashboard, StaffLead, StaffMember, StaffMessage, StaffOrder, StaffQuotation, StaffRequest, StaffRequestDetail, StaffWorkOrder, WorkOrderStatus } from "@/types/staff"
 
 type Result<T> = { success: boolean; data: T; message?: string }
 const json = (method: string, body?: unknown): RequestInit => ({ method, body: body === undefined ? undefined : JSON.stringify(body) })
@@ -15,8 +15,9 @@ export const staffClient = {
   convertLead: (id: string) => authClient.authenticated<Result<{ leadId: string; requestId: string; requestCode: string; customerId: string }>>(`/staff/leads/${id}/convert`, { method: "POST" }),
   requests: (filters: { q?: string; status?: string; priority?: string; assigned?: string } = {}) => authClient.authenticated<Result<Paged<StaffRequest>>>(`/staff/requests?${query(filters)}`),
   request: (id: string) => authClient.authenticated<Result<StaffRequestDetail>>(`/staff/requests/${id}`),
+  requestMessages: (id: string, before?: string | null) => authClient.authenticated<Result<{ items: StaffMessage[]; hasMore: boolean; nextCursor: string | null }>>(`/staff/requests/${id}/messages?limit=50${before ? `&before=${encodeURIComponent(before)}` : ""}`),
   updateRequest: (id: string, body: { status?: RequestStatus; priority?: Priority; assignedTo?: string; internalSummary?: string; message?: string; visibility?: "customer" | "internal" }) => authClient.authenticated<Result<StaffRequest>>(`/staff/requests/${id}`, json("PATCH", body)),
-  sendMessage: (id: string, content: string, visibility: "customer" | "internal") => authClient.authenticated<Result<unknown>>(`/staff/requests/${id}/messages`, json("POST", { content, visibility })),
+  sendMessage: (id: string, content: string, visibility: "customer" | "internal", clientMessageId: string) => authClient.authenticated<Result<StaffMessage>>(`/staff/requests/${id}/messages`, json("POST", { content, visibility, clientMessageId })),
   createQuotation: (id: string, body: { items: Array<{ description: string; quantity: number; unit: string; unitPrice: number }>; taxRate: number; validUntil: string; leadTime: string; paymentTerms: string; notes: string; status: "draft" | "sent" }) => authClient.authenticated<Result<StaffQuotation>>(`/staff/requests/${id}/quotations`, json("POST", body)),
   sendQuotation: (requestId: string, quotationId: string) => authClient.authenticated<Result<StaffQuotation>>(`/staff/requests/${requestId}/quotations/${quotationId}/send`, { method: "PATCH" }),
   downloadAttachment: (requestId: string, attachmentId: string) => authClient.download(`/staff/requests/${requestId}/attachments/${attachmentId}`),

@@ -31,6 +31,7 @@ export const router = createBrowserRouter([{ element: <AppLayout />, children: [
     { element: <RequireStaff />, children: [
       { path: "/staff", lazy: async () => { const module = await import("@/pages/staff-dashboard-page"); return { Component: module.StaffDashboardPage } } },
       { path: "/staff/leads", lazy: async () => { const module = await import("@/pages/staff-leads-page"); return { Component: module.StaffLeadsPage } } },
+      { path: "/staff/support", lazy: async () => { const module = await import("@/pages/staff-support-page"); return { Component: module.StaffSupportPage } } },
       { path: "/staff/requests", lazy: async () => { const module = await import("@/pages/staff-requests-page"); return { Component: module.StaffRequestsPage } } },
       { path: "/staff/work-orders", lazy: async () => { const module = await import("@/pages/staff-work-orders-page"); return { Component: module.StaffWorkOrdersPage } } },
       { path: "/staff/orders", lazy: async () => { const module = await import("@/pages/staff-orders-page"); return { Component: module.StaffOrdersPage } } },

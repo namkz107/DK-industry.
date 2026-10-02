@@ -13,6 +13,8 @@ const { commitOrderStock, releaseOrderStock } = require('../services/orderServic
 const { withTransaction } = require('../services/transactionService');
 const { writeAudit } = require('../services/auditService');
 const { createNotification, dispatchSoon } = require('../services/notificationService');
+const { createIdempotentMessage, messagePage, publicMessage } = require('../services/chatMessageService');
+const { emitMessage, emitRequestEvent, emitRequestUpdated } = require('../services/realtimeService');
 
 const router = express.Router();
 const uploadDirectory = path.join(__dirname, '..', '..', 'storage', 'customer-requests');
@@ -219,7 +221,9 @@ router.get('/requests', async (req, res, next) => {
       ServiceRequest.find(filter).select('-attachments.storedName -internalSummary').populate('customer', 'name email phone company').populate('assignedTo', 'name email').sort({ priority: -1, createdAt: -1 }).skip((page - 1) * limit).limit(limit).lean(),
       ServiceRequest.countDocuments(filter)
     ]);
-    res.json({ success: true, data: { items, total, page, pages: Math.ceil(total / limit) } });
+    const unread = await RequestMessage.aggregate([{ $match: { request: { $in: items.map(item => item._id) }, senderRole: 'customer', readByStaffAt: null } }, { $group: { _id: '$request', count: { $sum: 1 } } }]);
+    const unreadByRequest = new Map(unread.map(item => [String(item._id), item.count]));
+    res.json({ success: true, data: { items: items.map(item => ({ ...item, unreadCount: unreadByRequest.get(String(item._id)) || 0 })), total, page, pages: Math.ceil(total / limit) } });
   } catch (error) { next(error); }
 });
 
@@ -228,13 +232,25 @@ router.get('/requests/:id', async (req, res, next) => {
     if (!validId(req.params.id)) fail('Yêu cầu không hợp lệ', 404);
     const request = await ServiceRequest.findById(req.params.id).select('+internalSummary -attachments.storedName').populate('customer', 'name email phone company').populate('assignedTo', 'name email').lean();
     if (!request) fail('Không tìm thấy yêu cầu', 404);
-    const [messages, quotations, workOrder] = await Promise.all([
-      RequestMessage.find({ request: request._id }).populate('sender', 'name role').sort({ createdAt: 1 }).limit(300).lean(),
+    const [messageResult, quotations, workOrder] = await Promise.all([
+      messagePage({ request: request._id }, { limit: 50, populateSender: true }),
       Quotation.find({ request: request._id }).populate('createdBy', 'name role').sort({ version: -1 }).lean(),
       WorkOrder.findOne({ request: request._id }).populate('assignedTo', 'name email').lean()
     ]);
-    await RequestMessage.updateMany({ request: request._id, senderRole: 'customer', readByStaffAt: null }, { readByStaffAt: new Date() });
-    res.json({ success: true, data: { request, messages, quotations, workOrder } });
+    const readAt = new Date();
+    const readResult = await RequestMessage.updateMany({ request: request._id, senderRole: 'customer', readByStaffAt: null }, { readByStaffAt: readAt });
+    if (readResult.modifiedCount) emitRequestEvent(request._id, 'message:read', { requestId: String(request._id), readerRole: 'staff', readAt: readAt.toISOString() });
+    res.json({ success: true, data: { request, messages: messageResult.items, messagePage: { hasMore: messageResult.hasMore, nextCursor: messageResult.nextCursor }, quotations, workOrder } });
+  } catch (error) { next(error); }
+});
+
+router.get('/requests/:id/messages', async (req, res, next) => {
+  try {
+    if (!validId(req.params.id)) fail('Yêu cầu không hợp lệ', 404);
+    const request = await ServiceRequest.exists({ _id: req.params.id });
+    if (!request) fail('Không tìm thấy yêu cầu', 404);
+    const data = await messagePage({ request: req.params.id }, { before: req.query.before, limit: req.query.limit, populateSender: true });
+    res.json({ success: true, data });
   } catch (error) { next(error); }
 });
 
@@ -262,6 +278,7 @@ router.patch('/requests/:id', async (req, res, next) => {
       if (message) await RequestMessage.create({ request: request._id, sender: req.user._id, senderRole: req.user.role, visibility: req.body.visibility === 'internal' ? 'internal' : 'customer', content: message, readByStaffAt: new Date() });
     }
     await request.save();
+    emitRequestUpdated(request._id, 'staff_update', { visibility: req.body.visibility === 'internal' ? 'internal' : 'customer' });
     res.json({ success: true, message: 'Đã cập nhật yêu cầu', data: request });
   } catch (error) { next(error); }
 });
@@ -276,10 +293,18 @@ router.post('/requests/:id/messages', async (req, res, next) => {
     const content = clean(req.body.content);
     if (!content) fail('Vui lòng nhập nội dung');
     const visibility = req.body.visibility === 'internal' ? 'internal' : 'customer';
-    const message = await RequestMessage.create({ request: request._id, sender: req.user._id, senderRole: req.user.role, visibility, content, readByStaffAt: new Date() });
+    const result = await createIdempotentMessage({ request: request._id, sender: req.user._id, senderRole: req.user.role, visibility, content, clientMessageId: req.body.clientMessageId, readByStaffAt: new Date() });
+    if (result.duplicate) return res.status(200).json({ success: true, message: 'Tin nhắn đã được gửi trước đó', data: publicMessage(result.message) });
     request.lastStaffMessageAt = new Date();
     await request.save();
-    res.status(201).json({ success: true, message: visibility === 'internal' ? 'Đã lưu ghi chú nội bộ' : 'Đã gửi khách hàng', data: message });
+    if (visibility === 'customer') {
+      await createNotification({ recipient: request.customer, type: 'request.staff_message', title: `Phản hồi mới cho ${request.code}`, message: content.slice(0, 180), link: '/tai-khoan/yeu-cau', metadata: { requestId: request._id } });
+      dispatchSoon();
+    }
+    await result.message.populate('sender', 'name role');
+    emitMessage(result.message);
+    emitRequestUpdated(request._id, 'staff_message', { visibility });
+    res.status(201).json({ success: true, message: visibility === 'internal' ? 'Đã lưu ghi chú nội bộ' : 'Đã gửi khách hàng', data: publicMessage(result.message) });
   } catch (error) { next(error); }
 });
 
@@ -315,6 +340,7 @@ router.post('/requests/:id/quotations', async (req, res, next) => {
       await request.save();
       await writeAudit({ actor: req.user._id, action: 'quotation.draft_created', entity: 'quotation', entityId: quotation._id, summary: `Tạo nháp báo giá ${quotation.code}`, metadata: { requestId: request._id, total: quotation.total } });
     }
+    emitRequestUpdated(request._id, status === 'sent' ? 'quotation_sent' : 'quotation_draft', { visibility: status === 'sent' ? 'customer' : 'internal' });
     res.status(201).json({ success: true, message: status === 'sent' ? 'Đã gửi báo giá cho khách hàng' : 'Đã lưu bản nháp báo giá', data: quotation });
   } catch (error) { next(error); }
 });
@@ -336,6 +362,7 @@ router.patch('/requests/:requestId/quotations/:quotationId/send', async (req, re
     await createNotification({ recipient: request.customer, type: 'quotation.sent', title: `Bạn có báo giá mới ${quotation.code}`, message: `Báo giá có tổng giá trị ${quotation.total.toLocaleString('vi-VN')}đ và hiệu lực đến ${quotation.validUntil.toLocaleDateString('vi-VN')}.`, link: '/tai-khoan/yeu-cau', metadata: { requestId: request._id, quotationId: quotation._id } });
     await writeAudit({ actor: req.user._id, action: 'quotation.sent', entity: 'quotation', entityId: quotation._id, summary: `Gửi báo giá ${quotation.code}`, metadata: { requestId: request._id, total: quotation.total } });
     dispatchSoon();
+    emitRequestUpdated(request._id, 'quotation_sent');
     res.json({ success: true, message: 'Đã gửi báo giá cho khách hàng', data: quotation });
   } catch (error) { next(error); }
 });

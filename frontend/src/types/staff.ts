@@ -16,12 +16,12 @@ export interface StaffLead {
 export interface StaffRequest {
   _id: string; code: string; title: string; description: string; requestType: string; material?: string; quantity?: number; dimensions?: string; budget?: string
   priority: Priority; status: RequestStatus; assignedTo?: StaffMember | null; customer: { _id: string; name: string; email: string; phone?: string; company?: string }
-  contact: { name?: string; phone?: string; email?: string; company?: string }; internalSummary?: string; createdAt: string
+  contact: { name?: string; phone?: string; email?: string; company?: string }; internalSummary?: string; createdAt: string; unreadCount?: number
   attachments: Array<{ _id: string; originalName: string; mimeType?: string; size?: number }>
 }
-export interface StaffMessage { _id: string; sender?: StaffMember; senderRole: string; visibility: "customer" | "internal"; content: string; createdAt: string; attachments: Array<{ _id: string; originalName: string }> }
+export interface StaffMessage { _id: string; clientMessageId?: string; sender?: StaffMember; senderRole: string; visibility: "customer" | "internal"; content: string; createdAt: string; readByCustomerAt?: string; readByStaffAt?: string; deliveryStatus?: "sending" | "failed"; attachments: Array<{ _id: string; originalName: string }> }
 export interface StaffQuotation { _id: string; code: string; version: number; status: string; subtotal: number; taxRate: number; taxAmount: number; total: number; validUntil: string; createdAt: string; items: Array<{ description: string; quantity: number; unit: string; unitPrice: number; lineTotal: number }> }
-export interface StaffRequestDetail { request: StaffRequest; messages: StaffMessage[]; quotations: StaffQuotation[] }
+export interface StaffRequestDetail { request: StaffRequest; messages: StaffMessage[]; messagePage?: { hasMore: boolean; nextCursor: string | null }; quotations: StaffQuotation[] }
 export interface Paged<T> { items: T[]; total: number; page: number; pages: number }
 export interface StaffOrder {
   _id: string; code: string; status: OrderStatus; paymentStatus: PaymentStatus; paymentMethod: "cod" | "bank_transfer"

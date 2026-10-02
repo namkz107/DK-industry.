@@ -8,6 +8,10 @@ async function connectDatabase() {
   const legacy = indexes.find(index => index.name === 'customer_1_idempotencyKey_1');
   if (legacy) await Order.collection.dropIndex(legacy.name);
   await Order.createIndexes();
+  const RequestMessage = require('../models/RequestMessage');
+  await RequestMessage.createIndexes();
+  const SupportMessage = require('../models/SupportMessage');
+  await SupportMessage.createIndexes();
   console.log(`MongoDB connected: ${mongoose.connection.host}`);
 }
 

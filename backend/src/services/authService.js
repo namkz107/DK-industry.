@@ -25,6 +25,16 @@ function verifyAccessToken(token) {
   return jwt.verify(token, jwtSecret(), { issuer: 'dk-industry-api', audience: 'dk-industry-web' });
 }
 
+function createSupportSocketToken(conversationId) {
+  return jwt.sign({ purpose: 'support_guest', conversationId: String(conversationId) }, jwtSecret(), { expiresIn: '15m', issuer: 'dk-industry-api', audience: 'dk-industry-support' });
+}
+
+function verifySupportSocketToken(token) {
+  const payload = jwt.verify(token, jwtSecret(), { issuer: 'dk-industry-api', audience: 'dk-industry-support' });
+  if (payload.purpose !== 'support_guest' || !payload.conversationId) throw new Error('Phiên hỗ trợ không hợp lệ');
+  return payload;
+}
+
 function newRefreshToken() {
   return crypto.randomBytes(64).toString('base64url');
 }
@@ -75,4 +85,4 @@ const refreshCookieOptions = persistent => persistent
   ? { ...cookieBaseOptions, maxAge: REFRESH_DAYS * 24 * 60 * 60 * 1000 }
   : { ...cookieBaseOptions };
 
-module.exports = { createAccessToken, verifyAccessToken, createSession, hashToken, newRefreshToken, refreshExpiry, publicUser, refreshCookieOptions, cookieBaseOptions };
+module.exports = { createAccessToken, verifyAccessToken, createSupportSocketToken, verifySupportSocketToken, createSession, hashToken, newRefreshToken, refreshExpiry, publicUser, refreshCookieOptions, cookieBaseOptions };

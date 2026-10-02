@@ -50,7 +50,7 @@ export interface CustomerOrder {
 }
 
 export interface RequestAttachment { _id: string; originalName: string; mimeType?: string; size?: number }
-export interface RequestMessage { _id: string; senderRole: "customer" | "staff" | "admin" | "system"; visibility: "customer"; content: string; attachments: RequestAttachment[]; createdAt: string }
+export interface RequestMessage { _id: string; clientMessageId?: string; senderRole: "customer" | "staff" | "admin" | "system"; visibility: "customer"; content: string; attachments: RequestAttachment[]; readByCustomerAt?: string; readByStaffAt?: string; createdAt: string; deliveryStatus?: "sending" | "failed" }
 export interface QuotationItem { _id: string; description: string; quantity: number; unit: string; unitPrice: number; lineTotal: number }
 export interface Quotation {
   _id: string; code: string; version: number; items: QuotationItem[]; subtotal: number; taxRate: number; taxAmount: number; total: number
@@ -66,8 +66,9 @@ export interface CustomerRequest {
   _id: string; code: string; requestType: "machining" | "product_quote" | "consulting"; title: string; description: string
   material?: string; quantity?: number; dimensions?: string; desiredDate?: string; budget?: string
   productSnapshot?: { name?: string; sku?: string; unit?: string }; attachments: RequestAttachment[]
-  status: string; timeline: TimelineItem[]; createdAt: string; latestQuotation?: Quotation | null
+  status: string; timeline: TimelineItem[]; createdAt: string; unreadCount?: number; latestQuotation?: Quotation | null
 }
-export interface RequestDetail { request: CustomerRequest; messages: RequestMessage[]; quotations: Quotation[]; workOrder?: WorkOrder | null }
+export interface MessagePage { hasMore: boolean; nextCursor: string | null }
+export interface RequestDetail { request: CustomerRequest; messages: RequestMessage[]; messagePage?: MessagePage; quotations: Quotation[]; workOrder?: WorkOrder | null }
 
 export interface CustomerSummary { orders: number; openOrders: number; requests: number; openRequests: number; cartItems: number }
