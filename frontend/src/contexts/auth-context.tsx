@@ -1,5 +1,5 @@
 /* eslint-disable react-refresh/only-export-components */
-import { createContext, useContext, useEffect, useMemo, useState, type PropsWithChildren } from "react"
+import { createContext, useContext, useEffect, useMemo, useRef, useState, type PropsWithChildren } from "react"
 import { useQueryClient } from "@tanstack/react-query"
 import { authClient } from "@/lib/auth-client"
 import type { AuthUser } from "@/types/auth"
@@ -7,7 +7,7 @@ import type { AuthUser } from "@/types/auth"
 interface AuthContextValue {
   user: AuthUser | null
   ready: boolean
-  login: (payload: { identifier: string; password: string; remember: boolean }) => Promise<AuthUser>
+  login: (payload: { identifier: string; password: string }) => Promise<AuthUser>
   register: (payload: { name: string; email: string; phone: string; password: string }) => Promise<AuthUser>
   logout: () => Promise<void>
   updateUser: (values: Partial<AuthUser>) => void
@@ -19,10 +19,14 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const queryClient = useQueryClient()
   const [user, setUser] = useState<AuthUser | null>(null)
   const [ready, setReady] = useState(false)
+  const startupLogout = useRef<Promise<void> | null>(null)
 
   useEffect(() => {
     let active = true
-    authClient.refresh().then(value => { if (active) setUser(value) }).catch(() => {}).finally(() => { if (active) setReady(true) })
+    // A new frontend runtime must always start signed out. Besides clearing the
+    // browser cookie, /logout revokes the previous refresh session on the server.
+    startupLogout.current ??= authClient.logout().catch(() => {})
+    startupLogout.current.finally(() => { if (active) setReady(true) })
     return () => { active = false }
   }, [])
 

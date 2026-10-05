@@ -34,13 +34,12 @@ test('refresh token đủ ngẫu nhiên và chỉ lưu dạng hash', () => {
   assert.notEqual(hashToken(first), first);
 });
 
-test('phiên đăng nhập mặc định kết thúc cùng trình duyệt và chỉ lưu 7 ngày khi được chọn', () => {
-  const sessionCookie = refreshCookieOptions(false);
-  const rememberedCookie = refreshCookieOptions(true);
+test('refresh token chỉ dùng session cookie, không lưu dài hạn', () => {
+  const sessionCookie = refreshCookieOptions();
 
   assert.equal(sessionCookie.httpOnly, true);
+  assert.equal(sessionCookie.sameSite, 'lax');
   assert.equal(sessionCookie.maxAge, undefined);
-  assert.equal(rememberedCookie.maxAge, 7 * 24 * 60 * 60 * 1000);
 });
 
 test('mật khẩu được bcrypt hash và có thể xác thực', async () => {

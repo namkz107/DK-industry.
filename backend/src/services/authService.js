@@ -47,13 +47,13 @@ function refreshExpiry() {
   return new Date(Date.now() + REFRESH_DAYS * 24 * 60 * 60 * 1000);
 }
 
-async function createSession(user, req, persistent = false) {
+async function createSession(user, req) {
   const refreshToken = newRefreshToken();
   const session = await RefreshSession.create({
     user: user._id,
     tokenHash: hashToken(refreshToken),
     expiresAt: refreshExpiry(),
-    persistent,
+    persistent: false,
     userAgent: req.get('user-agent') || '',
     ip: req.ip
   });
@@ -81,8 +81,6 @@ const cookieBaseOptions = {
   path: '/api/auth'
 };
 
-const refreshCookieOptions = persistent => persistent
-  ? { ...cookieBaseOptions, maxAge: REFRESH_DAYS * 24 * 60 * 60 * 1000 }
-  : { ...cookieBaseOptions };
+const refreshCookieOptions = () => ({ ...cookieBaseOptions });
 
 module.exports = { createAccessToken, verifyAccessToken, createSupportSocketToken, verifySupportSocketToken, createSession, hashToken, newRefreshToken, refreshExpiry, publicUser, refreshCookieOptions, cookieBaseOptions };

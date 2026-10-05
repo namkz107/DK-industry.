@@ -45,7 +45,7 @@ router.post('/register', async (req, res, next) => {
     const user = await User.create({ name, email, phone, passwordHash: await User.hashPassword(password), role: 'customer' });
     const verificationToken = await issueAccountToken(user, 'email_verification', 24 * 60);
     const tokens = await createSession(user, req);
-    res.cookie('dk_refresh', tokens.refreshToken, refreshCookieOptions(false));
+    res.cookie('dk_refresh', tokens.refreshToken, refreshCookieOptions());
     res.status(201).json({ success: true, data: { user: publicUser(user), accessToken: tokens.accessToken } });
     if (process.env.NODE_ENV !== 'test') setImmediate(() => sendDirectEmail({ to: user.email, subject: 'Xác minh email Cơ khí Đăng Khoa', text: `Xin chào ${user.name},\n\nXác minh email của bạn tại: ${clientUrl('/xac-minh-email', verificationToken)}\n\nLiên kết có hiệu lực 24 giờ.` }));
   } catch (error) { next(error); }
@@ -107,9 +107,8 @@ router.post('/login', async (req, res, next) => {
 
     user.lastLoginAt = new Date();
     await user.save();
-    const persistent = req.body.remember === true;
-    const tokens = await createSession(user, req, persistent);
-    res.cookie('dk_refresh', tokens.refreshToken, refreshCookieOptions(persistent));
+    const tokens = await createSession(user, req);
+    res.cookie('dk_refresh', tokens.refreshToken, refreshCookieOptions());
     res.json({ success: true, data: { user: publicUser(user), accessToken: tokens.accessToken } });
   } catch (error) { next(error); }
 });
@@ -131,7 +130,7 @@ router.post('/refresh', async (req, res, next) => {
     session.expiresAt = refreshExpiry();
     session.lastUsedAt = new Date();
     await session.save();
-    res.cookie('dk_refresh', refreshToken, refreshCookieOptions(session.persistent === true));
+    res.cookie('dk_refresh', refreshToken, refreshCookieOptions());
     res.json({ success: true, data: { user: publicUser(user), accessToken: createAccessToken(user, session._id) } });
   } catch (error) { next(error); }
 });
