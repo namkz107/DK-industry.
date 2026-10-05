@@ -4,8 +4,9 @@ import { RequireAuth } from "@/components/require-auth"
 import { RequireCustomer } from "@/components/require-customer"
 import { RequireStaff } from "@/components/require-staff"
 import { RequireAdmin } from "@/components/require-admin"
+import { RouteErrorPage } from "@/pages/route-error-page"
 
-export const router = createBrowserRouter([{ element: <AppLayout />, children: [
+export const router = createBrowserRouter([{ element: <AppLayout />, errorElement: <RouteErrorPage/>, children: [
   { path: "/", lazy: async () => { const module = await import("@/pages/home-page"); return { Component: module.HomePage } } },
   { path: "/gioi-thieu", lazy: async () => { const module = await import("@/pages/about-page"); return { Component: module.AboutPage } } },
   { path: "/dich-vu", lazy: async () => { const module = await import("@/pages/services-page"); return { Component: module.ServicesPage } } },

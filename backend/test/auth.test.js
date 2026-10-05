@@ -6,11 +6,10 @@ process.env.JWT_SECRET = 'unit_test_secret_that_is_longer_than_32_characters';
 const User = require('../src/models/User');
 const { createAccessToken, verifyAccessToken, newRefreshToken, hashToken, refreshCookieOptions } = require('../src/services/authService');
 
-test('access token giữ đúng danh tính và quyền trong 15 phút', () => {
+test('access token giữ đúng danh tính và vai trò trong 15 phút', () => {
   const user = {
     _id: '507f1f77bcf86cd799439011',
     role: 'staff',
-    permissions: ['lead:update'],
     tokenVersion: 2
   };
   const sessionId = '507f1f77bcf86cd799439012';
@@ -20,7 +19,6 @@ test('access token giữ đúng danh tính và quyền trong 15 phút', () => {
   assert.equal(payload.sid, sessionId);
   assert.equal(payload.role, 'staff');
   assert.equal(payload.tv, 2);
-  assert.deepEqual(payload.permissions, ['lead:update']);
   assert.ok(payload.exp - payload.iat <= 15 * 60);
 });
 

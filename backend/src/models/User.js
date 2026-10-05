@@ -24,7 +24,6 @@ const userSchema = new mongoose.Schema({
   phone: { type: String, trim: true, unique: true, sparse: true },
   passwordHash: { type: String, required: true, select: false },
   role: { type: String, enum: ['customer', 'staff', 'admin'], default: 'customer', index: true },
-  permissions: [{ type: String, trim: true }],
   status: { type: String, enum: ['active', 'blocked'], default: 'active', index: true },
   company: { type: String, trim: true, maxlength: 200 },
   taxCode: { type: String, trim: true, maxlength: 30 },

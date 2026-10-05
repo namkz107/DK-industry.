@@ -23,7 +23,6 @@ async function bootstrapAdmin({ required = false } = {}) {
     email,
     passwordHash: await User.hashPassword(password),
     role: 'admin',
-    permissions: [],
     status: 'active'
   };
   if (phone) values.phone = phone;

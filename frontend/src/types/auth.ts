@@ -6,7 +6,6 @@ export interface AuthUser {
   email: string
   phone: string
   role: UserRole
-  permissions: string[]
   company: string
   status: "active" | "blocked"
   emailVerified?: boolean

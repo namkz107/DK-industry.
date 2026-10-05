@@ -19,16 +19,19 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const queryClient = useQueryClient()
   const [user, setUser] = useState<AuthUser | null>(null)
   const [ready, setReady] = useState(false)
-  const startupLogout = useRef<Promise<void> | null>(null)
+  const startupRestore = useRef<Promise<AuthUser | null> | null>(null)
 
   useEffect(() => {
     let active = true
-    // A new frontend runtime must always start signed out. Besides clearing the
-    // browser cookie, /logout revokes the previous refresh session on the server.
-    startupLogout.current ??= authClient.logout().catch(() => {})
-    startupLogout.current.finally(() => { if (active) setReady(true) })
-    return () => { active = false }
-  }, [])
+    startupRestore.current ??= authClient.restore()
+    startupRestore.current.then(value => { if (active) setUser(value) }).finally(() => { if (active) setReady(true) })
+    const expired = () => {
+      queryClient.removeQueries({ queryKey: ["customer"] }); queryClient.removeQueries({ queryKey: ["staff"] }); queryClient.removeQueries({ queryKey: ["admin"] }); queryClient.removeQueries({ queryKey: ["notifications"] })
+      setUser(null)
+    }
+    window.addEventListener("dk:auth-expired", expired)
+    return () => { active = false; window.removeEventListener("dk:auth-expired", expired) }
+  }, [queryClient])
 
   const value = useMemo<AuthContextValue>(() => ({
     user,

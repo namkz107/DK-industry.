@@ -39,7 +39,7 @@ const fail = (message, status = 400) => { throw Object.assign(new Error(message)
 const pageValues = query => ({ page: Math.max(1, Number(query.page) || 1), limit: Math.min(50, Math.max(1, Number(query.limit) || 20)) });
 const escapeRegex = value => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const slugify = value => clean(value, 200).normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-const publicUser = user => ({ _id: user._id, name: user.name, email: user.email, phone: user.phone || '', role: user.role, permissions: user.permissions || [], status: user.status, lastLoginAt: user.lastLoginAt, createdAt: user.createdAt });
+const publicUser = user => ({ _id: user._id, name: user.name, email: user.email, phone: user.phone || '', role: user.role, status: user.status, lastLoginAt: user.lastLoginAt, createdAt: user.createdAt });
 
 async function hasValidImageSignature(file) {
   const handle = await fs.promises.open(file.path, 'r');
@@ -99,7 +99,7 @@ router.post('/users', async (req, res, next) => {
     const role = staffRoles.has(req.body.role) ? req.body.role : 'staff';
     if (name.length < 2 || !emailPattern.test(email) || !phonePattern.test(phone)) fail('Họ tên, email hoặc số điện thoại không hợp lệ');
     if (!passwordPattern.test(password)) fail('Mật khẩu tạm thời cần từ 8 đến 72 ký tự, gồm chữ hoa, chữ thường và số');
-    const user = await User.create({ name, email, phone, role, permissions: [], passwordHash: await User.hashPassword(password), status: 'active' });
+    const user = await User.create({ name, email, phone, role, passwordHash: await User.hashPassword(password), status: 'active' });
     await audit(req, 'user.created', 'user', user._id, `Đã tạo tài khoản ${role}: ${user.name}`);
     res.status(201).json({ success: true, message: 'Đã tạo tài khoản nhân sự', data: publicUser(user) });
   } catch (error) { next(error); }

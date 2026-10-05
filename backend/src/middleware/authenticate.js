@@ -30,10 +30,4 @@ function requireRole(...roles) {
     : res.status(403).json({ success: false, message: 'Bạn không có quyền thực hiện thao tác này' });
 }
 
-function requirePermission(permission) {
-  return (req, res, next) => req.user?.role === 'admin' || req.user?.permissions?.includes(permission)
-    ? next()
-    : res.status(403).json({ success: false, message: 'Tài khoản chưa được cấp quyền này' });
-}
-
-module.exports = { authenticate, requireRole, requirePermission };
+module.exports = { authenticate, requireRole };

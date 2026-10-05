@@ -60,6 +60,7 @@ export function CustomerProfilePage() {
   }
 
   if (profile.isLoading) return <CustomerShell title="Hồ sơ & địa chỉ" description="Đang tải thông tin..."><Loading/></CustomerShell>
+  if (profile.error) return <CustomerShell title="Hồ sơ & địa chỉ" description="Không thể tải thông tin tài khoản."><ErrorText error={profile.error}/></CustomerShell>
   return <CustomerShell title="Hồ sơ & địa chỉ" description="Thông tin chính xác giúp bộ phận kinh doanh liên hệ và giao hàng nhanh hơn.">
     {notice && <p role="status" className="mb-5 flex items-center gap-2 rounded-2xl bg-emerald-50 p-4 font-semibold text-emerald-800"><CheckCircle2 className="size-5"/>{notice}</p>}
     <div className="grid gap-6 xl:grid-cols-[1fr_.9fr]">

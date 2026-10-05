@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { CalendarClock, Factory, Search, UserCheck } from "lucide-react"
 import { useEffect, useState, type FormEvent } from "react"
 import { StaffShell } from "@/components/staff/staff-shell"
+import { Pagination } from "@/components/pagination"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -18,15 +19,17 @@ export function StaffWorkOrdersPage() {
   usePageMeta("Công việc sau báo giá", "Quản lý hợp đồng, đặt cọc, kế hoạch sản xuất và bàn giao.")
   const client = useQueryClient()
   const [filters, setFilters] = useState({ q: "", status: "", assigned: "" })
+  const [page, setPage] = useState(1)
   const [selected, setSelected] = useState("")
-  const list = useQuery({ queryKey: ["staff", "work-orders", filters], queryFn: () => staffClient.workOrders(filters) })
+  const list = useQuery({ queryKey: ["staff", "work-orders", filters, page], queryFn: () => staffClient.workOrders({ ...filters, page }) })
   const detail = useQuery({ queryKey: ["staff", "work-order", selected], queryFn: () => staffClient.workOrder(selected), enabled: Boolean(selected) })
-  useEffect(() => { if (!selected && list.data?.data.items[0]) setSelected(list.data.data.items[0]._id) }, [list.data, selected])
+  useEffect(() => setPage(1), [filters])
+  useEffect(() => { const items = list.data?.data.items; if (items?.length && !items.some(item => item._id === selected)) setSelected(items[0]._id) }, [list.data, selected])
   const refresh = () => { void client.invalidateQueries({ queryKey: ["staff", "work-orders"] }); void client.invalidateQueries({ queryKey: ["staff", "work-order", selected] }) }
   const update = useMutation({ mutationFn: (body: Parameters<typeof staffClient.updateWorkOrder>[1]) => staffClient.updateWorkOrder(selected, body), onSuccess: refresh })
   return <StaffShell title="Công việc sau báo giá" description="Theo dõi từ hợp đồng, đặt cọc, kế hoạch thực hiện đến kiểm tra chất lượng và bàn giao.">
     <div className="mb-5 grid gap-3 rounded-2xl border bg-white p-4 md:grid-cols-[1fr_220px_180px]"><label className="relative"><Search className="absolute left-3 top-3.5 size-5 text-slate-400"/><Input className="pl-10" value={filters.q} onChange={event => setFilters({ ...filters, q: event.target.value })} placeholder="Mã công việc, hợp đồng, PO..."/></label><Select value={filters.status} onChange={status => setFilters({ ...filters, status })} first="Mọi trạng thái" options={Object.entries(labels)}/><Select value={filters.assigned} onChange={assigned => setFilters({ ...filters, assigned })} first="Tất cả phụ trách" options={[["mine", "Của tôi"], ["unassigned", "Chưa phân công"]]}/></div>
-    <div className="grid gap-5 xl:grid-cols-[390px_1fr]"><div className="space-y-3">{list.data?.data.items.map(item => <button key={item._id} onClick={() => setSelected(item._id)} className={cn("w-full rounded-2xl border bg-white p-5 text-left shadow-sm", selected === item._id && "border-orange-500 ring-2 ring-orange-100")}><div className="flex justify-between gap-3"><strong className="text-emerald-950">{item.code}</strong><span className="font-bold text-orange-700">{money.format(item.agreedTotal)}</span></div><p className="mt-2 font-bold text-slate-700">{item.customer.name}</p><p className="mt-2 text-sm text-emerald-700">{labels[item.status]}</p></button>)}{list.isLoading && <p className="rounded-2xl bg-white p-5">Đang tải...</p>}{!list.isLoading && !list.data?.data.items.length && <p className="rounded-2xl bg-white p-6 text-center text-slate-500">Chưa có công việc phù hợp.</p>}</div>{detail.data?.data ? <WorkOrderDetail item={detail.data.data} busy={update.isPending} error={update.error as Error | null} onUpdate={body => update.mutate(body)}/> : <div className="rounded-3xl border bg-white p-10 text-center text-slate-500">Chọn một công việc để xử lý.</div>}</div>
+    <div className="grid gap-5 xl:grid-cols-[390px_1fr]"><div><div className="space-y-3">{list.data?.data.items.map(item => <button key={item._id} onClick={() => setSelected(item._id)} className={cn("w-full rounded-2xl border bg-white p-5 text-left shadow-sm", selected === item._id && "border-orange-500 ring-2 ring-orange-100")}><div className="flex justify-between gap-3"><strong className="text-emerald-950">{item.code}</strong><span className="font-bold text-orange-700">{money.format(item.agreedTotal)}</span></div><p className="mt-2 font-bold text-slate-700">{item.customer.name}</p><p className="mt-2 text-sm text-emerald-700">{labels[item.status]}</p></button>)}{list.isLoading && <p className="rounded-2xl bg-white p-5">Đang tải...</p>}{list.error && <p role="alert" className="rounded-2xl bg-red-50 p-4 text-red-700">{list.error.message}</p>}{!list.isLoading && !list.data?.data.items.length && <p className="rounded-2xl bg-white p-6 text-center text-slate-500">Chưa có công việc phù hợp.</p>}</div><Pagination page={list.data?.data.page || page} pages={list.data?.data.pages || 1} onChange={setPage}/></div>{detail.data?.data ? <WorkOrderDetail item={detail.data.data} busy={update.isPending} error={update.error as Error | null} onUpdate={body => update.mutate(body)}/> : <div className="rounded-3xl border bg-white p-10 text-center text-slate-500">Chọn một công việc để xử lý.</div>}</div>
   </StaffShell>
 }
 

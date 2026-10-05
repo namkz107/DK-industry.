@@ -7,6 +7,7 @@ import { useSearchParams } from "react-router-dom"
 import { z } from "zod"
 import { AdminShell } from "@/components/admin/admin-shell"
 import { ImageUpload } from "@/components/admin/image-upload"
+import { Pagination } from "@/components/pagination"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -18,20 +19,20 @@ import type { AdminProduct, AdminProject, AdminService } from "@/types/admin"
 type Kind = "products" | "services" | "projects"
 type ContentItem = AdminProduct | AdminService | AdminProject
 const schema = z.object({
-  name: z.string().trim().min(2, "Tên phải có ít nhất 2 ký tự"), slug: z.string(), category: z.string(), summary: z.string(), description: z.string(), sku: z.string(), price: z.string(), stock: z.string(), unit: z.string(), client: z.string(), location: z.string(), year: z.string(), image: z.string(), featured: z.boolean(), visible: z.boolean(), priceOnRequest: z.boolean(),
+  name: z.string().trim().min(2, "Tên phải có ít nhất 2 ký tự"), slug: z.string(), category: z.string(), summary: z.string(), description: z.string(), sku: z.string(), price: z.string(), stock: z.string(), unit: z.string(), client: z.string(), location: z.string(), year: z.string(), image: z.string(), details: z.string(), materials: z.string(), applications: z.string(), extraImages: z.string(), challenge: z.string(), solution: z.string(), order: z.string(), featured: z.boolean(), visible: z.boolean(), priceOnRequest: z.boolean(),
 })
 type Values = z.infer<typeof schema>
-const defaults: Values = { name: "", slug: "", category: "", summary: "", description: "", sku: "", price: "0", stock: "0", unit: "sản phẩm", client: "", location: "", year: String(new Date().getFullYear()), image: "", featured: false, visible: true, priceOnRequest: false }
+const defaults: Values = { name: "", slug: "", category: "", summary: "", description: "", sku: "", price: "0", stock: "0", unit: "sản phẩm", client: "", location: "", year: String(new Date().getFullYear()), image: "", details: "", materials: "", applications: "", extraImages: "", challenge: "", solution: "", order: "0", featured: false, visible: true, priceOnRequest: false }
 const tabs: Array<{ key: Kind; label: string; icon: typeof Boxes }> = [{ key: "products", label: "Sản phẩm", icon: Boxes }, { key: "services", label: "Dịch vụ", icon: Wrench }, { key: "projects", label: "Dự án", icon: FolderKanban }]
 
 export function AdminContentPage() {
   usePageMeta("Sản phẩm và nội dung", "Quản lý dữ liệu hiển thị trên website.")
   const [params, setParams] = useSearchParams(); const queryClient = useQueryClient()
   const kind = (tabs.some(item => item.key === params.get("tab")) ? params.get("tab") : "products") as Kind
-  const [filters, setFilters] = useState({ q: "", state: "" }); const [editing, setEditing] = useState<ContentItem | null>(null); const [showForm, setShowForm] = useState(false); const [imageUploading, setImageUploading] = useState(false)
-  const products = useQuery({ queryKey: ["admin", "products", filters], queryFn: () => adminClient.products(filters), enabled: kind === "products" })
-  const services = useQuery({ queryKey: ["admin", "services", filters], queryFn: () => adminClient.services(filters), enabled: kind === "services" })
-  const projects = useQuery({ queryKey: ["admin", "projects", filters], queryFn: () => adminClient.projects(filters), enabled: kind === "projects" })
+  const [filters, setFilters] = useState({ q: "", state: "" }); const [page, setPage] = useState(1); const [editing, setEditing] = useState<ContentItem | null>(null); const [showForm, setShowForm] = useState(false); const [imageUploading, setImageUploading] = useState(false)
+  const products = useQuery({ queryKey: ["admin", "products", filters, page], queryFn: () => adminClient.products({ ...filters, page }), enabled: kind === "products" })
+  const services = useQuery({ queryKey: ["admin", "services", filters, page], queryFn: () => adminClient.services({ ...filters, page }), enabled: kind === "services" })
+  const projects = useQuery({ queryKey: ["admin", "projects", filters, page], queryFn: () => adminClient.projects({ ...filters, page }), enabled: kind === "projects" })
   const current = kind === "products" ? products : kind === "services" ? services : projects
   const form = useForm<Values>({ resolver: zodResolver(schema), defaultValues: defaults })
   const refresh = () => { void queryClient.invalidateQueries({ queryKey: ["admin", kind] }); void queryClient.invalidateQueries({ queryKey: ["admin", "dashboard"] }) }
@@ -42,20 +43,23 @@ export function AdminContentPage() {
   }, onSuccess: () => { refresh(); closeForm() } })
   const hide = useMutation<unknown, Error, string>({ mutationFn: (id) => kind === "products" ? adminClient.hideProduct(id) : kind === "services" ? adminClient.hideService(id) : adminClient.hideProject(id), onSuccess: refresh })
 
-  useEffect(() => { setEditing(null); setShowForm(false); form.reset(defaults) }, [kind, form])
+  useEffect(() => { setEditing(null); setShowForm(false); setPage(1); form.reset(defaults) }, [kind, form])
+  useEffect(() => setPage(1), [filters])
   const closeForm = () => { setEditing(null); setShowForm(false); form.reset(defaults) }
   const openCreate = () => { setEditing(null); form.reset(defaults); setShowForm(true) }
   const openEdit = (item: ContentItem) => {
     setEditing(item); setShowForm(true)
-    if ("stock" in item) form.reset({ ...defaults, name: item.name, slug: item.slug, category: item.category, description: item.description || "", sku: item.sku || "", price: String(item.price || 0), stock: String(item.stock), unit: item.unit, image: item.image || "", featured: item.featured, visible: item.active, priceOnRequest: item.priceOnRequest })
-    else if ("summary" in item) form.reset({ ...defaults, name: item.name, slug: item.slug, summary: item.summary, description: item.description || "", image: item.image || "", featured: item.featured, visible: item.published })
-    else form.reset({ ...defaults, name: item.title, slug: item.slug, category: item.category, client: item.client || "", location: item.location || "", year: item.year || "", description: item.description || "", image: item.image || "", featured: item.featured, visible: item.published })
+    if ("stock" in item) form.reset({ ...defaults, name: item.name, slug: item.slug, category: item.category, description: item.description || "", sku: item.sku || "", price: String(item.price || 0), stock: String(item.stock), unit: item.unit, image: item.image || "", details: Object.entries(item.specifications || {}).map(([key, value]) => `${key}: ${value}`).join("\n"), extraImages: (item.images || []).join("\n"), featured: item.featured, visible: item.active, priceOnRequest: item.priceOnRequest })
+    else if ("summary" in item) form.reset({ ...defaults, name: item.name, slug: item.slug, summary: item.summary, description: item.description || "", image: item.image || "", details: item.capabilities.join("\n"), materials: item.materials.join("\n"), applications: item.applications.join("\n"), order: String(item.order), featured: item.featured, visible: item.published })
+    else form.reset({ ...defaults, name: item.title, slug: item.slug, category: item.category, client: item.client || "", location: item.location || "", year: item.year || "", description: item.description || "", image: item.image || "", extraImages: (item.gallery || []).join("\n"), challenge: item.challenge || "", solution: item.solution || "", featured: item.featured, visible: item.published })
   }
   const submit = (values: Values) => {
+    const lines = (value: string) => value.split(/\r?\n/).map(item => item.trim()).filter(Boolean)
     const common = { slug: values.slug, description: values.description, image: values.image, featured: values.featured }
-    const body = kind === "products" ? { ...common, name: values.name, category: values.category, sku: values.sku, price: Number(values.price), stock: Number(values.stock), unit: values.unit, priceOnRequest: values.priceOnRequest, active: values.visible }
-      : kind === "services" ? { ...common, name: values.name, summary: values.summary, published: values.visible }
-      : { ...common, title: values.name, category: values.category, client: values.client, location: values.location, year: values.year, published: values.visible }
+    const specifications = Object.fromEntries(lines(values.details).map(line => { const separator = line.indexOf(":"); return separator > 0 ? [line.slice(0, separator).trim(), line.slice(separator + 1).trim()] : [line, ""] }))
+    const body = kind === "products" ? { ...common, name: values.name, category: values.category, sku: values.sku, price: Number(values.price), stock: Number(values.stock), unit: values.unit, priceOnRequest: values.priceOnRequest, specifications, images: lines(values.extraImages), active: values.visible }
+      : kind === "services" ? { ...common, name: values.name, summary: values.summary, capabilities: lines(values.details), materials: lines(values.materials), applications: lines(values.applications), order: Number(values.order), published: values.visible }
+      : { ...common, title: values.name, category: values.category, client: values.client, location: values.location, year: values.year, challenge: values.challenge, solution: values.solution, gallery: lines(values.extraImages), published: values.visible }
     save.mutate({ id: editing?._id, body })
   }
 
@@ -67,10 +71,14 @@ export function AdminContentPage() {
       {kind === "services" && <Field label="Mô tả ngắn"><Input {...form.register("summary")}/></Field>}
       {kind === "projects" && <><Field label="Khách hàng"><Input {...form.register("client")}/></Field><Field label="Địa điểm"><Input {...form.register("location")}/></Field><Field label="Năm"><Input {...form.register("year")}/></Field></>}
       <ImageUpload value={form.watch("image")} onBusyChange={setImageUploading} onChange={url => form.setValue("image", url, { shouldDirty: true, shouldValidate: true })}/><label className="md:col-span-2 xl:col-span-3 text-sm font-bold text-slate-700">Mô tả<Textarea className="mt-2 min-h-28" {...form.register("description")}/></label>
+      {kind === "products" && <><label className="md:col-span-2 text-sm font-bold text-slate-700">Thông số kỹ thuật<Textarea className="mt-2 min-h-28" placeholder={'Mỗi dòng: Tên: Giá trị'} {...form.register("details")}/></label><label className="text-sm font-bold text-slate-700">Ảnh phụ<Textarea className="mt-2 min-h-28" placeholder="Mỗi dòng một URL ảnh" {...form.register("extraImages")}/></label></>}
+      {kind === "services" && <><Field label="Thứ tự hiển thị"><Input type="number" min="0" {...form.register("order")}/></Field><label className="text-sm font-bold text-slate-700">Năng lực<Textarea className="mt-2 min-h-28" placeholder="Mỗi dòng một năng lực" {...form.register("details")}/></label><label className="text-sm font-bold text-slate-700">Vật liệu<Textarea className="mt-2 min-h-28" placeholder="Mỗi dòng một vật liệu" {...form.register("materials")}/></label><label className="text-sm font-bold text-slate-700">Ứng dụng<Textarea className="mt-2 min-h-28" placeholder="Mỗi dòng một ứng dụng" {...form.register("applications")}/></label></>}
+      {kind === "projects" && <><label className="text-sm font-bold text-slate-700">Thách thức<Textarea className="mt-2 min-h-28" {...form.register("challenge")}/></label><label className="text-sm font-bold text-slate-700">Giải pháp<Textarea className="mt-2 min-h-28" {...form.register("solution")}/></label><label className="text-sm font-bold text-slate-700">Thư viện ảnh<Textarea className="mt-2 min-h-28" placeholder="Mỗi dòng một URL ảnh" {...form.register("extraImages")}/></label></>}
       <div className="flex flex-wrap items-center gap-5 md:col-span-2 xl:col-span-3"><Check register={form.register("featured")} label="Nổi bật"/><Check register={form.register("visible")} label={kind === "products" ? "Đang bán" : "Đang công khai"}/>{kind === "products" && <Check register={form.register("priceOnRequest")} label="Giá liên hệ"/>}<Button disabled={save.isPending || imageUploading}>{imageUploading ? "Đang tải ảnh..." : save.isPending ? "Đang lưu..." : "Lưu nội dung"}</Button></div>
     </form>{save.error && <ErrorText error={save.error as Error}/>}</section>}
     <div className="mt-5 grid gap-3 rounded-2xl border bg-white p-4 sm:grid-cols-[1fr_190px]"><label className="relative"><Search className="absolute left-3 top-3.5 size-5 text-slate-400"/><Input className="pl-10" value={filters.q} onChange={event => setFilters({ ...filters, q: event.target.value })} placeholder={`Tìm ${tabName(kind).toLowerCase()}...`}/></label><select className="field-select" value={filters.state} onChange={event => setFilters({ ...filters, state: event.target.value })}><option value="">Tất cả trạng thái</option><option value="published">Đang hiển thị</option><option value="hidden">Đã ẩn</option></select></div>
-    <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">{current.data?.data.items.map(item => <ContentCard key={item._id} item={item} onEdit={() => openEdit(item)} onHide={() => { if (window.confirm("Ẩn nội dung này khỏi website?")) hide.mutate(item._id) }}/>)}</div>{current.isLoading && <p className="mt-4 rounded-2xl bg-white p-8 text-center">Đang tải nội dung...</p>}{!current.isLoading && !current.data?.data.items.length && <p className="mt-4 rounded-2xl bg-white p-10 text-center text-slate-500">Chưa có dữ liệu phù hợp.</p>}
+    <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">{current.data?.data.items.map(item => <ContentCard key={item._id} item={item} onEdit={() => openEdit(item)} onHide={() => { if (window.confirm("Ẩn nội dung này khỏi website?")) hide.mutate(item._id) }}/>)}</div>{current.isLoading && <p className="mt-4 rounded-2xl bg-white p-8 text-center">Đang tải nội dung...</p>}{current.error && <ErrorText error={current.error}/>} {!current.isLoading && !current.data?.data.items.length && <p className="mt-4 rounded-2xl bg-white p-10 text-center text-slate-500">Chưa có dữ liệu phù hợp.</p>}
+    <Pagination page={current.data?.data.page || page} pages={current.data?.data.pages || 1} onChange={setPage}/>
   </AdminShell>
 }
 

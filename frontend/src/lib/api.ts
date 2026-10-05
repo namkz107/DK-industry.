@@ -14,8 +14,10 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 
 export const api = {
   products: () => request<ApiList<Product>>("/products?limit=100"),
+  featuredProducts: () => request<ApiList<Product>>("/products?featured=true&limit=3"),
   product: (slug: string) => request<{ success: boolean; data: Product }>(`/products/${encodeURIComponent(slug)}`),
-  projects: () => request<ApiList<Project>>("/projects?featured=true"),
+  projects: () => request<ApiList<Project>>("/projects?limit=100"),
+  featuredProjects: () => request<ApiList<Project>>("/projects?featured=true&limit=3"),
   services: () => request<ApiList<Service>>("/services"),
   createLead: (payload: unknown) => request<{ success: boolean; message: string; data: { id: string; code: string; status: string; duplicate: boolean } }>("/leads", {
     method: "POST",

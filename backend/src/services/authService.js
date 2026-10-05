@@ -15,7 +15,7 @@ function jwtSecret() {
 
 function createAccessToken(user, sessionId) {
   return jwt.sign(
-    { role: user.role, permissions: user.permissions || [], sid: String(sessionId), tv: user.tokenVersion || 0 },
+    { role: user.role, sid: String(sessionId), tv: user.tokenVersion || 0 },
     jwtSecret(),
     { subject: String(user._id), expiresIn: '15m', issuer: 'dk-industry-api', audience: 'dk-industry-web' }
   );
@@ -53,7 +53,6 @@ async function createSession(user, req) {
     user: user._id,
     tokenHash: hashToken(refreshToken),
     expiresAt: refreshExpiry(),
-    persistent: false,
     userAgent: req.get('user-agent') || '',
     ip: req.ip
   });
@@ -67,7 +66,6 @@ function publicUser(user) {
     email: user.email,
     phone: user.phone || '',
     role: user.role,
-    permissions: user.permissions || [],
     company: user.company || '',
     status: user.status,
     emailVerified: Boolean(user.emailVerifiedAt)

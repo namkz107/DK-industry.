@@ -65,6 +65,8 @@ export function RequestsPage() {
     } catch (error) { setFileError(error instanceof Error ? error.message : "Không thể tải tệp") }
   }
 
+  if (requests.error) return <CustomerShell title="Yêu cầu gia công & báo giá" description="Không thể tải lịch sử yêu cầu."><p role="alert" className="rounded-xl bg-red-50 p-4 text-sm font-semibold text-red-700">{requests.error.message}</p></CustomerShell>
+
   return <CustomerShell title="Yêu cầu gia công & báo giá" description="Gửi thông số và bản vẽ một lần; mỗi yêu cầu có mã riêng để theo dõi xuyên suốt.">
     {createdCode && <p role="status" className="mb-5 flex items-center gap-3 rounded-2xl bg-emerald-50 p-4 font-semibold text-emerald-800"><CheckCircle2 className="size-5"/>Đã gửi yêu cầu {createdCode}. Kỹ thuật sẽ kiểm tra trong giờ làm việc.</p>}
     <div className="grid gap-6 xl:grid-cols-[.85fr_1.15fr]">

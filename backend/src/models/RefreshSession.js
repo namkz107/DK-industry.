@@ -6,7 +6,6 @@ const refreshSessionSchema = new mongoose.Schema({
   expiresAt: { type: Date, required: true, index: { expires: 0 } },
   revokedAt: Date,
   lastUsedAt: Date,
-  persistent: { type: Boolean, default: false },
   userAgent: { type: String, maxlength: 500 },
   ip: { type: String, maxlength: 100 }
 }, { timestamps: true });

@@ -163,6 +163,14 @@ router.get('/conversations/:id', async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
+router.get('/conversations/:id/messages', async (req, res, next) => {
+  try {
+    const { user } = await context(req); requireStaff(user);
+    if (!validId(req.params.id) || !await SupportConversation.exists({ _id: req.params.id })) throw Object.assign(new Error('Không tìm thấy hội thoại'), { status: 404 });
+    res.json({ success: true, data: await latestMessages(req.params.id, req.query.before, req.query.limit) });
+  } catch (error) { next(error); }
+});
+
 router.post('/conversations/:id/messages', async (req, res, next) => {
   try {
     const { user } = await context(req); requireStaff(user);

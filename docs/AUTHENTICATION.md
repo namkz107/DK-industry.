@@ -6,9 +6,9 @@ Hệ thống dùng ba role cố định:
 
 | Role | Cách tạo | Quyền hiện tại |
 |---|---|---|
-| `customer` | Tự đăng ký trên website | Đăng nhập, xem tài khoản, đổi mật khẩu; các đơn hàng/yêu cầu riêng sẽ nối vào role này ở giai đoạn sau |
-| `staff` | Do Admin cấp | Xem dashboard, xem và cập nhật trạng thái lead |
-| `admin` | Bootstrap bằng seed; sau này quản lý từ trang Admin | Toàn quyền API quản trị nội dung, dự án, sản phẩm và dịch vụ |
+| `customer` | Tự đăng ký trên website | Quản lý hồ sơ, địa chỉ, giỏ hàng, đơn hàng, yêu cầu gia công và hội thoại riêng |
+| `staff` | Do Admin cấp | Xử lý lead, yêu cầu, báo giá, lệnh sản xuất, đơn hàng và hỗ trợ khách hàng |
+| `admin` | Bootstrap bằng seed hoặc tạo từ trang Admin | Toàn quyền nghiệp vụ, tài khoản, nội dung và nhật ký kiểm toán |
 
 API đăng ký không đọc trường `role` từ client. Vì vậy người dùng công khai không thể tự đăng ký thành Staff/Admin.
 
@@ -17,7 +17,7 @@ API đăng ký không đọc trường `role` từ client. Vì vậy người d�
 1. Đăng nhập/đăng ký đúng sẽ trả access token có hạn 15 phút. Frontend chỉ giữ token trong bộ nhớ, không ghi vào `localStorage`.
 2. Backend đồng thời tạo refresh token ngẫu nhiên, gửi bằng session cookie `HttpOnly`, `SameSite=Lax`; cookie không có `Max-Age` lưu dài hạn.
 3. MongoDB chỉ lưu SHA-256 hash của refresh token trong collection `refreshsessions`, không lưu token gốc.
-4. Trong lúc ứng dụng đang chạy, khi access token hết hạn frontend gọi `/api/auth/refresh` và xoay token cũ. Mỗi lần frontend khởi động lại, phiên cũ được thu hồi qua `/api/auth/logout` và người dùng phải đăng nhập lại.
+4. Trong cùng một tab, tải lại trang vẫn giữ phiên để tránh bắt đăng nhập lại không cần thiết. Khi đóng tab/trình duyệt, dấu phiên phía frontend mất; lần mở sau cookie cũ được thu hồi và người dùng phải đăng nhập lại. Khi access token hết hạn trong lúc sử dụng, frontend gọi `/api/auth/refresh` và xoay token cũ.
 5. Đăng xuất thu hồi session hiện tại. Đổi mật khẩu tăng `tokenVersion` và thu hồi toàn bộ refresh session của tài khoản.
 
 6. Mỗi request được bảo vệ đều kiểm tra tài khoản còn tồn tại, đang `active` và đúng `tokenVersion`.
@@ -44,7 +44,7 @@ Chạy:
 
 ```powershell
 npm run seed:admin
-yarn start
+npm start
 ```
 
 Khi terminal báo `Admin account: ready (...)`, đăng nhập tại `http://localhost:3000/dang-nhap`. Lệnh này không seed lại hoặc xóa sản phẩm/dự án. Không đưa mật khẩu thật vào `.env.example`, README, ảnh chụp hoặc Git. Nên xóa dòng mật khẩu khỏi `backend/.env` sau khi bootstrap xong; việc này không xóa mật khẩu đã hash trong MongoDB.
@@ -62,5 +62,5 @@ Có thể xem cả hai collection bằng MongoDB Compass và MongoDB Atlas. Khô
 - Đặt `CLIENT_URL` đúng origin frontend; nhiều origin phải phân tách bằng dấu phẩy.
 - Không commit bất kỳ file `.env` nào và bật secret scanning trên repository public.
 - Không ghi access/refresh token, mật khẩu hoặc toàn bộ header cookie vào log.
-- Bổ sung luồng quên mật khẩu qua email, xác minh email và MFA cho Admin ở giai đoạn hardening.
+- Luồng quên mật khẩu, xác minh email và gửi lại liên kết xác minh đã có. MFA cho Admin vẫn là bước hardening trước production.
 - Khi frontend và API nằm khác site, cần cấu hình cookie `SameSite=None; Secure` và bổ sung CSRF token trước khi deploy.

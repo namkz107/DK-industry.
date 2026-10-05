@@ -56,7 +56,7 @@ Khi deploy nhiều server hoặc dùng hosting không có ổ đĩa bền vững
 
 ## Kiểm tra thủ công
 
-1. Chạy `corepack yarn start`, mở `http://localhost:3000/dang-ky` và tạo Customer.
+1. Chạy `npm start`, mở `http://localhost:3000/dang-ky` và tạo Customer.
 2. Mở **Tài khoản → Hồ sơ & địa chỉ**, cập nhật công ty và thêm một địa chỉ mặc định.
 3. Mở **Sản phẩm**, thêm sản phẩm có giá vào giỏ. Hàng “Liên hệ báo giá” phải mở form yêu cầu thay vì vào giỏ.
 4. Mở giỏ trên header, đổi số lượng, chọn địa chỉ và đặt hàng.

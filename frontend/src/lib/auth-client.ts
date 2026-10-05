@@ -3,6 +3,24 @@ import type { AuthPayload, AuthUser } from "@/types/auth"
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api"
 let accessToken = ""
 let refreshRequest: Promise<AuthUser> | null = null
+const RUNTIME_SESSION_KEY = "dk_auth_runtime"
+
+function hasRuntimeSession() {
+  try { return sessionStorage.getItem(RUNTIME_SESSION_KEY) === "active" } catch { return false }
+}
+
+function markRuntimeSession(active: boolean) {
+  try {
+    if (active) sessionStorage.setItem(RUNTIME_SESSION_KEY, "active")
+    else sessionStorage.removeItem(RUNTIME_SESSION_KEY)
+  } catch { /* Storage may be unavailable. */ }
+}
+
+function expireLocalSession() {
+  accessToken = ""
+  markRuntimeSession(false)
+  window.dispatchEvent(new Event("dk:auth-expired"))
+}
 
 type ApiResponse<T> = { success: boolean; data: T; message?: string }
 
@@ -23,7 +41,7 @@ async function authenticatedFetch(path: string, options: RequestInit = {}, retry
   headers.set("Authorization", `Bearer ${accessToken}`)
   const response = await fetch(`${API_URL}${path}`, { ...options, credentials: "include", headers })
   if (response.status === 401 && retry) {
-    try { await refreshSession(); return authenticatedFetch(path, options, false) } catch { accessToken = "" }
+    try { await refreshSession(); return authenticatedFetch(path, options, false) } catch { expireLocalSession() }
   }
   return response
 }
@@ -45,18 +63,28 @@ export const authClient = {
   async register(payload: { name: string; email: string; phone: string; password: string }) {
     const result = await publicPost<ApiResponse<AuthPayload>>("/auth/register", payload)
     accessToken = result.data.accessToken
+    markRuntimeSession(true)
     return result.data.user
   },
   async login(payload: { identifier: string; password: string }) {
     const result = await publicPost<ApiResponse<AuthPayload>>("/auth/login", payload)
     accessToken = result.data.accessToken
+    markRuntimeSession(true)
     return result.data.user
   },
   async refresh() {
     return refreshSession()
   },
+  async restore() {
+    if (!hasRuntimeSession()) {
+      try { await publicPost("/auth/logout") } catch { /* Local signed-out state is authoritative. */ }
+      accessToken = ""
+      return null
+    }
+    try { return await refreshSession() } catch { expireLocalSession(); return null }
+  },
   async logout() {
-    try { await publicPost("/auth/logout") } finally { accessToken = "" }
+    try { await publicPost("/auth/logout") } finally { accessToken = ""; markRuntimeSession(false) }
   },
   async authenticated<T>(path: string, options: RequestInit = {}, retry = true): Promise<T> {
     const response = await authenticatedFetch(path, options, retry)
@@ -74,4 +102,5 @@ export const authClient = {
   forgotPassword(email: string) { return publicPost<{ success: boolean; message: string }>("/auth/forgot-password", { email }) },
   resetPassword(token: string, password: string) { return publicPost<{ success: boolean; message: string }>("/auth/reset-password", { token, password }) },
   verifyEmail(token: string) { return publicPost<{ success: boolean; message: string }>("/auth/verify-email", { token }) },
+  resendVerification() { return this.authenticated<{ success: boolean; message: string }>("/auth/resend-verification", { method: "POST" }) },
 }

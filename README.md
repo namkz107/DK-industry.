@@ -43,22 +43,19 @@ dk-industry/
 │   ├── src/middleware/
 │   ├── src/models/
 │   └── src/routes/
-├── .env.example
 └── package.json            # script điều phối monorepo
 ```
 
 ## Chạy local
 
-Yêu cầu Node.js 18+ và MongoDB local (hoặc MongoDB Atlas).
+Yêu cầu Node.js 20.19+ và MongoDB local (hoặc MongoDB Atlas).
 
 ```bash
 npm run install:all
 Copy-Item backend\.env.example backend\.env
 npm run seed
-yarn start
+npm start
 ```
-
-Nếu Windows chưa nhận lệnh `yarn`, mở PowerShell bằng **Run as administrator** một lần và chạy `corepack enable yarn`. Trong lúc chưa bật shim hệ thống, có thể dùng tương đương: `corepack yarn start`.
 
 - Website: `http://localhost:3000`
 - API health check: `http://localhost:5000/api/health`

@@ -13,5 +13,21 @@ export default defineConfig({
     port: 3000,
     open: true,
   },
-  build: { target: "es2020", cssCodeSplit: true, sourcemap: false },
+  build: {
+    target: "es2020",
+    cssCodeSplit: true,
+    sourcemap: false,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          react: ["react", "react-dom", "react-router-dom"],
+          query: ["@tanstack/react-query"],
+          forms: ["react-hook-form", "@hookform/resolvers", "zod"],
+          motion: ["motion"],
+          icons: ["lucide-react"],
+          socket: ["socket.io-client"],
+        },
+      },
+    },
+  },
 })

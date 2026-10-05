@@ -5,7 +5,7 @@ Tài liệu này phân biệt phần hệ thống đã kiểm soát trong mã ng
 ## Hạ tầng bắt buộc
 
 - Dùng MongoDB replica set hoặc MongoDB Atlas. Các thao tác đơn hàng, tồn kho, giỏ hàng, báo giá và lệnh sản xuất dùng transaction; production sẽ từ chối khởi động nếu MongoDB không hỗ trợ transaction, trừ khi chủ động đặt `ALLOW_NON_TRANSACTIONAL_WRITES=true` (không khuyến nghị).
-- Đặt `NODE_ENV=production`, `JWT_SECRET` đủ mạnh, `FRONTEND_URL` đúng origin HTTPS và `TRUST_PROXY` phù hợp với reverse proxy thực tế.
+- Đặt `NODE_ENV=production`, `JWT_SECRET` đủ mạnh, `CLIENT_URL` đúng origin HTTPS và `TRUST_PROXY` phù hợp với reverse proxy thực tế.
 - Không dùng tài khoản seed hoặc mật khẩu mẫu. Sau khi bootstrap Admin, xóa `ADMIN_SEED_PASSWORD` khỏi môi trường chạy.
 - Bật HTTPS, backup MongoDB định kỳ, kiểm thử phục hồi backup, log tập trung, cảnh báo lỗi và giám sát endpoint `/api/health`.
 - Reverse proxy phải cho phép WebSocket upgrade tại đường dẫn `/socket.io`; cấu hình `VITE_SOCKET_URL` trỏ tới public origin của API realtime.

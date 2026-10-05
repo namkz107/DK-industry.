@@ -3,6 +3,7 @@ import { Banknote, CalendarClock, CheckCircle2, History, MapPin, Navigation, Pac
 import { useEffect, useState, type FormEvent, type ReactNode } from "react"
 import { useSearchParams } from "react-router-dom"
 import { StaffShell } from "@/components/staff/staff-shell"
+import { Pagination } from "@/components/pagination"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -22,10 +23,12 @@ export function StaffOrdersPage() {
   const [params] = useSearchParams()
   const client = useQueryClient()
   const [filters, setFilters] = useState({ q: "", status: params.get("status") || "", paymentStatus: "", assigned: params.get("assigned") || "" })
+  const [page, setPage] = useState(1)
   const [selected, setSelected] = useState("")
-  const list = useQuery({ queryKey: ["staff", "orders", filters], queryFn: () => staffClient.orders(filters) })
+  const list = useQuery({ queryKey: ["staff", "orders", filters, page], queryFn: () => staffClient.orders({ ...filters, page }) })
   const detail = useQuery({ queryKey: ["staff", "order", selected], queryFn: () => staffClient.order(selected), enabled: Boolean(selected) })
-  useEffect(() => { if (!selected && list.data?.data.items[0]) setSelected(list.data.data.items[0]._id) }, [list.data, selected])
+  useEffect(() => setPage(1), [filters])
+  useEffect(() => { const items = list.data?.data.items; if (items?.length && !items.some(item => item._id === selected)) setSelected(items[0]._id) }, [list.data, selected])
   const refresh = () => {
     void client.invalidateQueries({ queryKey: ["staff", "orders"] })
     void client.invalidateQueries({ queryKey: ["staff", "order", selected] })
@@ -42,7 +45,7 @@ export function StaffOrdersPage() {
       <Filter value={filters.assigned} onChange={assigned => setFilters({ ...filters, assigned })} first="Tất cả phụ trách" options={[["mine", "Của tôi"], ["unassigned", "Chưa phân công"]]}/>
     </div>
     <div className="grid gap-5 xl:grid-cols-[390px_1fr]">
-      <div className="space-y-3">{list.data?.data.items.map(item => <button key={item._id} onClick={() => setSelected(item._id)} className={cn("w-full rounded-2xl border bg-white p-5 text-left shadow-sm transition hover:border-orange-300", selected === item._id && "border-orange-500 ring-2 ring-orange-100")}><div className="flex justify-between gap-3"><strong className="text-lg text-emerald-950">{item.code}</strong><span className="text-sm font-black text-orange-700">{money.format(item.total)}</span></div><p className="mt-2 text-slate-700">{item.shippingAddress.recipientName}</p><div className="mt-3 flex justify-between gap-2 text-sm"><span className="font-bold text-emerald-700">{statusNames[item.status]}</span><span className="text-slate-500">{new Date(item.createdAt).toLocaleDateString("vi-VN")}</span></div><p className="mt-2 text-xs font-semibold text-slate-500">{paymentNames[item.paymentStatus]}</p></button>)}{list.isLoading && <p className="rounded-2xl bg-white p-5">Đang tải đơn hàng...</p>}{!list.isLoading && !list.data?.data.items.length && <p className="rounded-2xl bg-white p-6 text-center text-slate-500">Không có đơn phù hợp.</p>}</div>
+      <div><div className="space-y-3">{list.data?.data.items.map(item => <button key={item._id} onClick={() => setSelected(item._id)} className={cn("w-full rounded-2xl border bg-white p-5 text-left shadow-sm transition hover:border-orange-300", selected === item._id && "border-orange-500 ring-2 ring-orange-100")}><div className="flex justify-between gap-3"><strong className="text-lg text-emerald-950">{item.code}</strong><span className="text-sm font-black text-orange-700">{money.format(item.total)}</span></div><p className="mt-2 text-slate-700">{item.shippingAddress.recipientName}</p><div className="mt-3 flex justify-between gap-2 text-sm"><span className="font-bold text-emerald-700">{statusNames[item.status]}</span><span className="text-slate-500">{new Date(item.createdAt).toLocaleDateString("vi-VN")}</span></div><p className="mt-2 text-xs font-semibold text-slate-500">{paymentNames[item.paymentStatus]}</p></button>)}{list.isLoading && <p className="rounded-2xl bg-white p-5">Đang tải đơn hàng...</p>}{list.error && <p role="alert" className="rounded-2xl bg-red-50 p-4 text-red-700">{list.error.message}</p>}{!list.isLoading && !list.data?.data.items.length && <p className="rounded-2xl bg-white p-6 text-center text-slate-500">Không có đơn phù hợp.</p>}</div><Pagination page={list.data?.data.page || page} pages={list.data?.data.pages || 1} onChange={setPage}/></div>
       {detail.data?.data ? <OrderDetail order={detail.data.data} busy={update.isPending || afterSales.isPending} success={update.isSuccess || afterSales.isSuccess} error={(update.error || afterSales.error) as Error | null} onUpdate={body => update.mutate(body)} onAfterSales={(requestId, status, resolution) => afterSales.mutate({ requestId, status, resolution })}/> : <div className="rounded-3xl border bg-white p-10 text-center text-slate-500">Chọn một đơn hàng để xử lý.</div>}
     </div>
   </StaffShell>

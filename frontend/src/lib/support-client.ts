@@ -22,6 +22,7 @@ export const supportClient = {
   send: (body: { content: string; clientMessageId: string; name?: string; phone?: string; email?: string }) => request<Result<{ conversation: SupportConversation; message: SupportMessage; socketToken?: string }>>("/messages", json("POST", body)),
   conversations: () => request<Result<SupportConversation[]>>("/conversations"),
   conversation: (id: string) => request<Result<SupportSession>>(`/conversations/${id}`),
+  staffMessages: (id: string, before?: string | null) => request<Result<{ items: SupportMessage[]; hasMore: boolean; nextCursor: string | null }>>(`/conversations/${id}/messages?limit=40${before ? `&before=${encodeURIComponent(before)}` : ""}`),
   staffSend: (id: string, content: string, clientMessageId: string) => request<Result<SupportMessage>>(`/conversations/${id}/messages`, json("POST", { content, clientMessageId })),
   update: (id: string, body: { assignedTo?: "me"; status?: "open" | "closed" }) => request<Result<SupportConversation>>(`/conversations/${id}`, json("PATCH", body)),
 }

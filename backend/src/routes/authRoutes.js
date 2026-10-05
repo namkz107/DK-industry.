@@ -96,6 +96,15 @@ router.post('/verify-email', async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
+router.post('/resend-verification', authenticate, async (req, res, next) => {
+  try {
+    if (req.user.emailVerifiedAt) return res.json({ success: true, message: 'Email đã được xác minh.' });
+    const token = await issueAccountToken(req.user, 'email_verification', 24 * 60);
+    if (process.env.NODE_ENV !== 'test') await sendDirectEmail({ to: req.user.email, subject: 'Xác minh email Cơ khí Đăng Khoa', text: `Xin chào ${req.user.name},\n\nXác minh email của bạn tại: ${clientUrl('/xac-minh-email', token)}\n\nLiên kết có hiệu lực 24 giờ.` });
+    res.json({ success: true, message: 'Đã gửi lại email xác minh.' });
+  } catch (error) { next(error); }
+});
+
 router.post('/login', async (req, res, next) => {
   try {
     const identifier = String(req.body.identifier || '').trim();
@@ -118,8 +127,7 @@ router.post('/refresh', async (req, res, next) => {
     const currentToken = req.cookies.dk_refresh;
     if (!currentToken) return res.status(401).json({ success: false, message: 'Không tìm thấy phiên đăng nhập' });
     const session = await RefreshSession.findOne({
-      tokenHash: hashToken(currentToken), revokedAt: null, expiresAt: { $gt: new Date() },
-      persistent: { $exists: true }
+      tokenHash: hashToken(currentToken), revokedAt: null, expiresAt: { $gt: new Date() }
     });
     if (!session) { res.clearCookie('dk_refresh', cookieBaseOptions); return res.status(401).json({ success: false, message: 'Phiên đăng nhập đã hết hạn' }); }
     const user = await User.findById(session.user).select('+tokenVersion');

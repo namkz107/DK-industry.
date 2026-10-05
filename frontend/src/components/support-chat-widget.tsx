@@ -25,6 +25,7 @@ export function SupportChatWidget() {
   const [phone, setPhone] = useState("")
   const [email, setEmail] = useState("")
   const [liveUnread, setLiveUnread] = useState(0)
+  const [loadingOlder, setLoadingOlder] = useState(false)
   const session = useQuery({ queryKey: ["support", "session", user?.id || "guest"], queryFn: supportClient.session, enabled: ready && !['staff', 'admin'].includes(user?.role || ''), staleTime: 30_000 })
   const queryKey = useMemo(() => ["support", "session", user?.id || "guest"] as const, [user?.id])
   const conversationId = session.data?.data?.conversation._id
@@ -85,6 +86,15 @@ export function SupportChatWidget() {
     send.mutate({ content: content.trim(), clientMessageId: crypto.randomUUID() })
   }
   const needsContact = !user && !conversationId
+  const loadOlder = async () => {
+    const page = session.data?.data?.page
+    if (!page?.hasMore || loadingOlder) return
+    setLoadingOlder(true)
+    try {
+      const result = await supportClient.messages(page.nextCursor)
+      updateSession(value => ({ ...value, messages: [...result.data.items, ...value.messages].filter((item, index, all) => all.findIndex(candidate => candidate._id === item._id) === index), page: { hasMore: result.data.hasMore, nextCursor: result.data.nextCursor } }))
+    } finally { setLoadingOlder(false) }
+  }
 
   return <div className="fixed bottom-4 right-3 z-[60] sm:bottom-6 sm:right-6">
     {open && <section role="dialog" aria-label="Hỗ trợ khách hàng" className="mb-3 flex h-[min(620px,calc(100vh-7rem))] w-[min(390px,calc(100vw-1.5rem))] flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl shadow-slate-950/25">
@@ -94,6 +104,7 @@ export function SupportChatWidget() {
       </header>
       <div ref={listRef} className="min-h-0 flex-1 space-y-3 overflow-y-auto bg-slate-50 p-4" aria-live="polite">
         <div className="max-w-[88%] rounded-2xl rounded-bl-md border border-slate-200 bg-white px-4 py-3 text-sm leading-6 text-slate-700 shadow-sm">Xin chào! CTY CPTV ĐẦU TƯ XD TM ĐĂNG KHOA có thể hỗ trợ gì cho bạn?</div>
+        {session.data?.data?.page.hasMore && <button className="mx-auto block rounded-lg px-3 py-2 text-xs font-bold text-blue-700 hover:bg-blue-50" disabled={loadingOlder} onClick={() => void loadOlder()}>{loadingOlder ? "Đang tải..." : "Tải tin nhắn cũ"}</button>}
         {messages.map(message => <SupportBubble key={message._id} message={message}/>) }
         {session.isLoading && <div className="grid place-items-center py-8"><LoaderCircle className="size-6 animate-spin text-blue-600"/></div>}
       </div>

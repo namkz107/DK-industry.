@@ -63,10 +63,9 @@ test('Admin quản lý nhân sự, nội dung và nhật ký đúng quyền', { 
     const forbiddenImage = new FormData(); forbiddenImage.append('image', new Blob(['staff'], { type: 'image/png' }), 'staff.png');
     assert.equal((await call('/admin/uploads/images', staffToken, { method: 'POST', body: forbiddenImage })).status, 403);
 
-    const createUserResponse = await call('/admin/users', adminToken, { method: 'POST', body: JSON.stringify({ name: 'Nhân viên mới', email: `${token}-new@example.com`, phone: uniqueVietnamesePhone('092'), password: 'Temporary123', role: 'staff', permissions: ['orders.manage', 'invalid.permission'] }) });
+    const createUserResponse = await call('/admin/users', adminToken, { method: 'POST', body: JSON.stringify({ name: 'Nhân viên mới', email: `${token}-new@example.com`, phone: uniqueVietnamesePhone('092'), password: 'Temporary123', role: 'staff' }) });
     const createUserBody = await createUserResponse.json();
     assert.equal(createUserResponse.status, 201);
-    assert.deepEqual(createUserBody.data.permissions, []);
     createdIds.users.push(createUserBody.data._id);
 
     const blockUser = await call(`/admin/users/${createUserBody.data._id}`, adminToken, { method: 'PATCH', body: JSON.stringify({ status: 'blocked' }) });
