@@ -6,6 +6,12 @@ const supportMessageSchema = new mongoose.Schema({
   senderRole: { type: String, enum: ['guest', 'customer', 'staff', 'admin', 'system'], required: true },
   clientMessageId: { type: String, trim: true, maxlength: 100 },
   content: { type: String, required: true, trim: true, maxlength: 3000 },
+  ai: {
+    provider: { type: String, enum: ['groq', 'fallback'] },
+    model: { type: String, maxlength: 100 },
+    needsHuman: Boolean,
+    reason: { type: String, maxlength: 300 }
+  },
   readAt: Date
 }, { timestamps: true });
 

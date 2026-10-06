@@ -27,9 +27,11 @@ function LoadingArtwork({ visible = true }: { visible?: boolean }) {
 export function GlobalLoading() {
   const navigation = useNavigation()
   const initialQueries = useIsFetching({
-    predicate: query => query.state.data === undefined,
+    predicate: query => query.state.data === undefined && query.meta?.suppressGlobalLoading !== true,
   })
-  const mutations = useIsMutating()
+  const mutations = useIsMutating({
+    predicate: mutation => mutation.options.meta?.suppressGlobalLoading !== true,
+  })
   const loading = navigation.state !== "idle" || initialQueries > 0 || mutations > 0
   const [visible, setVisible] = useState(false)
   const shownAt = useRef(0)

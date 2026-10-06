@@ -20,6 +20,8 @@ export const supportClient = {
   session: () => request<Result<SupportSession | null>>("/session"),
   messages: (before?: string | null) => request<Result<{ items: SupportMessage[]; hasMore: boolean; nextCursor: string | null }>>(`/messages?limit=40${before ? `&before=${encodeURIComponent(before)}` : ""}`),
   send: (body: { content: string; clientMessageId: string; name?: string; phone?: string; email?: string }) => request<Result<{ conversation: SupportConversation; message: SupportMessage; socketToken?: string }>>("/messages", json("POST", body)),
+  guestAi: (body: { content: string; history: Array<Pick<SupportMessage, "senderRole" | "content">> }) => request<Result<{ answer: string; needsHuman: boolean; reason: string; fallback?: boolean }>>("/guest-ai", json("POST", body)),
+  clearGuestSession: () => request<{ success: boolean }>("/guest-session", json("DELETE")),
   conversations: () => request<Result<SupportConversation[]>>("/conversations"),
   conversation: (id: string) => request<Result<SupportSession>>(`/conversations/${id}`),
   staffMessages: (id: string, before?: string | null) => request<Result<{ items: SupportMessage[]; hasMore: boolean; nextCursor: string | null }>>(`/conversations/${id}/messages?limit=40${before ? `&before=${encodeURIComponent(before)}` : ""}`),

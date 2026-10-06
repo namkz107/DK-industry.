@@ -37,6 +37,7 @@ app.use('/api/customer/requests', customerRequestLimiter);
 app.use('/api/customer/requests/:id/messages', chatMessageLimiter);
 app.use('/api/staff/requests/:id/messages', chatMessageLimiter);
 app.use('/api/support/messages', supportMessageLimiter);
+app.use('/api/support/guest-ai', supportMessageLimiter);
 app.use('/api/support/conversations/:id/messages', supportMessageLimiter);
 app.use('/api/auth', authRoutes);
 app.use('/api/support', supportRoutes);

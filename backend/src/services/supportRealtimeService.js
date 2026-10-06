@@ -17,4 +17,9 @@ function emitSupportUpdated(conversationId) {
   namespace.to('support:staff').emit('support:inbox', { conversationId: String(conversationId) });
 }
 
-module.exports = { conversationRoom, setSupportNamespace, emitSupportMessage, emitSupportUpdated };
+function emitSupportAiStatus(conversationId, status) {
+  if (!namespace) return;
+  namespace.to(conversationRoom(conversationId)).emit('support:ai-status', { conversationId: String(conversationId), status });
+}
+
+module.exports = { conversationRoom, setSupportNamespace, emitSupportMessage, emitSupportUpdated, emitSupportAiStatus };

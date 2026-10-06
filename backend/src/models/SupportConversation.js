@@ -15,6 +15,9 @@ const supportConversationSchema = new mongoose.Schema({
   lastMessagePreview: { type: String, trim: true, maxlength: 200 },
   unreadByCustomer: { type: Number, default: 0, min: 0 },
   unreadByStaff: { type: Number, default: 0, min: 0 },
+  aiEscalated: { type: Boolean, default: false },
+  aiEscalationReason: { type: String, trim: true, maxlength: 300 },
+  lastAiReplyAt: Date,
   closedAt: Date
 }, { timestamps: true });
 

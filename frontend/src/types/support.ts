@@ -5,6 +5,7 @@ export interface SupportMessage {
   senderRole: "guest" | "customer" | "staff" | "admin" | "system"
   clientMessageId?: string
   content: string
+  ai?: { provider?: "groq" | "fallback"; model?: string; needsHuman?: boolean; reason?: string }
   readAt?: string
   createdAt: string
   deliveryStatus?: "sending" | "failed"
@@ -20,6 +21,9 @@ export interface SupportConversation {
   lastMessagePreview?: string
   unreadByCustomer: number
   unreadByStaff: number
+  aiEscalated?: boolean
+  aiEscalationReason?: string
+  lastAiReplyAt?: string
   createdAt: string
 }
 

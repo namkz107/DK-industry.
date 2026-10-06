@@ -25,7 +25,7 @@ const waitFor = (socket, event, timeout = 2500) => new Promise((resolve, reject)
 });
 const join = (socket, conversationId) => new Promise(resolve => socket.emit('support:join', String(conversationId), resolve));
 
-test('Support Chat bảo vệ phiên Guest, phân quyền Staff, realtime và idempotency', { skip: !runIntegration }, async () => {
+test('Support Chat lưu lịch sử Customer, phân quyền Staff, realtime và idempotency', { skip: !runIntegration }, async () => {
   await mongoose.connect(process.env.MONGODB_URI);
   const server = http.createServer(app);
   const io = initializeChatGateway(server);
@@ -40,27 +40,26 @@ test('Support Chat bảo vệ phiên Guest, phân quyền Staff, realtime và id
   ]);
   const accessToken = user => createAccessToken(user, new mongoose.Types.ObjectId());
   let conversationId;
-  let guestSocket;
+  let customerSocket;
   let staffSocket;
 
   try {
     const firstClientMessageId = `guest_${suffix}`;
     const first = await fetch(`${origin}/api/support/messages`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: 'Khách Guest Test', phone: '0912345678', content: 'Tôi cần tư vấn gia công.', clientMessageId: firstClientMessageId })
+      method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken(customer)}` },
+      body: JSON.stringify({ content: 'Tôi cần tư vấn gia công.', clientMessageId: firstClientMessageId })
     });
     assert.equal(first.status, 201);
     const firstBody = await first.json();
     conversationId = firstBody.data.conversation._id;
-    assert.ok(firstBody.data.socketToken);
-    const cookie = first.headers.get('set-cookie').split(';')[0];
+    assert.equal(firstBody.data.socketToken, undefined);
 
-    const session = await fetch(`${origin}/api/support/session`, { headers: { Cookie: cookie } });
+    const session = await fetch(`${origin}/api/support/session`, { headers: { Authorization: `Bearer ${accessToken(customer)}` } });
     assert.equal(session.status, 200);
     assert.equal((await session.json()).data.conversation._id, conversationId);
 
     const duplicate = await fetch(`${origin}/api/support/messages`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json', Cookie: cookie },
+      method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken(customer)}` },
       body: JSON.stringify({ content: 'Tôi cần tư vấn gia công.', clientMessageId: firstClientMessageId })
     });
     assert.equal(duplicate.status, 200);
@@ -69,14 +68,14 @@ test('Support Chat bảo vệ phiên Guest, phân quyền Staff, realtime và id
     const forbidden = await fetch(`${origin}/api/support/conversations`, { headers: { Authorization: `Bearer ${accessToken(customer)}` } });
     assert.equal(forbidden.status, 403);
 
-    guestSocket = createClient(`${origin}/support`, { transports: ['websocket'], auth: { supportToken: firstBody.data.socketToken } });
+    customerSocket = createClient(`${origin}/support`, { transports: ['websocket'], auth: { token: accessToken(customer) } });
     staffSocket = createClient(`${origin}/support`, { transports: ['websocket'], auth: { token: accessToken(staff) } });
-    await Promise.all([waitFor(guestSocket, 'connect'), waitFor(staffSocket, 'connect')]);
-    assert.deepEqual(await join(guestSocket, conversationId), { ok: true });
+    await Promise.all([waitFor(customerSocket, 'connect'), waitFor(staffSocket, 'connect')]);
+    assert.deepEqual(await join(customerSocket, conversationId), { ok: true });
     assert.deepEqual(await join(staffSocket, conversationId), { ok: true });
-    assert.equal((await join(guestSocket, new mongoose.Types.ObjectId())).ok, false);
+    assert.equal((await join(customerSocket, new mongoose.Types.ObjectId())).ok, false);
 
-    const realtime = waitFor(guestSocket, 'support:message');
+    const realtime = waitFor(customerSocket, 'support:message');
     const staffClientMessageId = `staff_${suffix}`;
     const reply = await fetch(`${origin}/api/support/conversations/${conversationId}/messages`, {
       method: 'POST', headers: { Authorization: `Bearer ${accessToken(staff)}`, 'Content-Type': 'application/json' },
@@ -92,7 +91,7 @@ test('Support Chat bảo vệ phiên Guest, phân quyền Staff, realtime và id
     assert.equal(duplicateReply.status, 200);
     assert.equal(await SupportMessage.countDocuments({ conversation: conversationId, clientMessageId: staffClientMessageId }), 1);
   } finally {
-    guestSocket?.disconnect(); staffSocket?.disconnect();
+    customerSocket?.disconnect(); staffSocket?.disconnect();
     if (conversationId) {
       await SupportMessage.deleteMany({ conversation: conversationId });
       await SupportConversation.deleteOne({ _id: conversationId });
